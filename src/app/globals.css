@@ -1,26 +1,178 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --brand: #0f3d2e;
+  --accent: #f5a623;
+  --canvas: #fafaf7;
+  --background: #fafaf7;
+  --foreground: #1a1a16;
+  --danger: #d64545;
+  --success: #2e7d5b;
+  --kb-nav: calc(3.75rem + env(safe-area-inset-bottom, 0px));
+  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space), "Space Grotesk", var(--font-sans);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-brand: var(--brand);
+  --color-accent: var(--accent);
+  --color-canvas: var(--canvas);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-space), "Space Grotesk", sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
+  min-height: 100%;
+  background: #0f3d2e;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.num {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+.kb-phone {
+  height: 100vh;
+  height: 100dvh;
+  height: 100svh;
+  max-height: 100svh;
+}
+
+@keyframes kb-sheet-up {
+  from {
+    transform: translateY(18%);
+    opacity: 0.96;
+  }
+  70% {
+    transform: translateY(-1.5%);
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes kb-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.kb-pulse {
+  animation: kb-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes kb-loc-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.kb-loc-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: kb-loc-ring 2.2s ease-out infinite;
+}
+
+@keyframes kb-search-ring {
+  0% {
+    transform: scale(0.35);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+.kb-search-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: kb-search-ring 2.4s ease-out infinite;
+}
+
+@keyframes kb-pin-drop {
+  0% {
+    transform: translateY(-18px);
+    opacity: 0;
+  }
+  72% {
+    transform: translateY(3px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.kb-pin-drop {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: kb-pin-drop 420ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes kb-draw-route {
+  from {
+    stroke-dashoffset: 420;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.kb-route-draw {
+  stroke-dasharray: 420;
+  animation: kb-draw-route 680ms ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kb-pulse,
+  .kb-loc-ring,
+  .kb-search-ring,
+  .kb-pin-drop,
+  .kb-route-draw {
+    animation: none;
+  }
+
+  .kb-route-draw {
+    stroke-dashoffset: 0;
+  }
 }
