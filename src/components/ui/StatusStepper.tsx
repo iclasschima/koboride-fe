@@ -25,10 +25,10 @@ export function StatusStepper({
                   current && "scale-125 bg-accent",
                 )}
               />
-              {compact ? null : (
+                  {compact ? null : (
                 <span
                   className={cn(
-                    "font-display mt-1.5 max-w-full truncate text-center text-[10px] font-medium",
+                    "font-display mt-1.5 max-w-full px-0.5 text-center text-[9px] leading-tight font-medium sm:text-[10px]",
                     current ? "text-[#1A1A16]" : "text-[#8A8780]",
                   )}
                 >

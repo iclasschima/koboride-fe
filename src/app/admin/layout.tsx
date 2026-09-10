@@ -37,16 +37,16 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[#F4F2EC] md:flex-row">
+    <div className="flex h-full min-h-0 flex-col bg-[#F4F2EC] md:flex-row">
       <AdminSidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="hidden h-14 items-center justify-between border-b border-black/6 bg-white px-6 md:flex">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col pb-[calc(3.75rem+env(safe-area-inset-bottom))] md:pb-0">
+        <header className="hidden h-14 shrink-0 items-center justify-between border-b border-black/6 bg-white px-6 md:flex">
           <p className="text-[13px] font-medium text-[#8A8780]">
             Yaba · live operations
           </p>
           <p className="text-[12px] text-[#8A8780]">Ops console</p>
         </header>
-        <div className="flex-1 overflow-auto p-6">{children}</div>
+        <div className="min-h-0 flex-1 overflow-auto px-4 py-4 md:p-6">{children}</div>
       </div>
     </div>
   );

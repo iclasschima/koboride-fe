@@ -22,6 +22,7 @@ export async function autocompletePlaces(
   const params = new URLSearchParams({ q, session });
   const data = await api.get<{ places: GooglePlaceSuggestion[] }>(
     `/api/places/autocomplete?${params}`,
+    { token: null },
   );
   return data.places;
 }
@@ -33,6 +34,7 @@ export async function placeDetails(
   const params = new URLSearchParams({ id, session });
   const data = await api.get<{ place: GooglePlaceDetails }>(
     `/api/places/details?${params}`,
+    { token: null },
   );
   return data.place;
 }
@@ -44,6 +46,7 @@ export async function reverseGeocode(
   const params = new URLSearchParams({ lat: String(lat), lng: String(lng) });
   const data = await api.get<{ place: GooglePlaceDetails }>(
     `/api/places/reverse?${params}`,
+    { token: null },
   );
   return data.place;
 }

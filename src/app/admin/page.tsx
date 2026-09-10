@@ -24,24 +24,32 @@ export default function AdminOverviewPage() {
 
   return (
     <div>
-      <div className="flex items-end justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="font-display text-[26px] font-semibold tracking-[-0.03em]">
+          <h1 className="font-display text-[22px] font-semibold tracking-[-0.03em] md:text-[26px]">
             Overview
           </h1>
           <p className="mt-1 text-[14px] text-[#8A8780]">
             Assign riders, watch status, mark bank transfers paid.
           </p>
         </div>
-        <Link
-          href="/admin/orders"
-          className="text-[13px] font-semibold text-brand hover:underline"
-        >
-          All orders →
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/orders/new"
+            className="inline-flex h-9 items-center rounded-full bg-brand px-4 text-[13px] font-semibold text-[#FAFAF7]"
+          >
+            Create order
+          </Link>
+          <Link
+            href="/admin/orders"
+            className="text-[13px] font-semibold text-brand hover:underline"
+          >
+            All orders →
+          </Link>
+        </div>
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="mt-6 grid grid-cols-2 gap-3 xl:grid-cols-5">
         <KpiCard
           label="Live orders"
           value={isPending ? "—" : String(live.length)}

@@ -41,7 +41,7 @@ export default function AdminUserDetailPage() {
       <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-display text-[26px] font-semibold tracking-[-0.03em]">
+            <h1 className="font-display text-[22px] font-semibold tracking-[-0.03em] md:text-[26px]">
               {customer.name?.trim() || "No name"}
             </h1>
             {customer.isRider ? (
@@ -50,14 +50,19 @@ export default function AdminUserDetailPage() {
               </span>
             ) : null}
           </div>
-          <p className="mt-1 text-[14px] text-[#8A8780]">{customer.phone}</p>
+          <a
+            href={`tel:${customer.phone}`}
+            className="mt-1 inline-block text-[14px] text-brand"
+          >
+            {customer.phone}
+          </a>
           <p className="mt-1 text-[13px] text-[#8A8780]">
             Joined {formatDate(customer.createdAt)}
           </p>
         </div>
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+      <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3">
         <Stat label="Orders" value={String(customer.ordersCount)} />
         <Stat label="Spent" value={formatNaira(customer.spentNgn)} />
         <Stat

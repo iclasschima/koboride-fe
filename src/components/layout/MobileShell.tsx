@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { RiderNav } from "@/components/layout/RiderNav";
+import { AddToHomeScreenBanner } from "@/components/pwa/AddToHomeScreen";
 import { useRiderAuth } from "@/lib/auth/RiderAuthProvider";
 import { cn } from "@/lib/cn";
 
@@ -31,7 +32,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
 
   if (isAdmin) {
     return (
-      <div className="relative mx-auto min-h-svh w-full max-w-none overflow-auto bg-[#FAFAF7]">
+      <div className="relative mx-auto h-svh min-h-svh w-full max-w-none overflow-hidden bg-[#FAFAF7]">
         {children}
       </div>
     );
@@ -47,6 +48,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       >
         {children}
       </div>
+      {(showCustomerNav || showRiderNav) && !mapChrome ? (
+        <AddToHomeScreenBanner />
+      ) : null}
       {showCustomerNav ? <BottomNav /> : null}
       {showRiderNav ? <RiderNav /> : null}
     </div>

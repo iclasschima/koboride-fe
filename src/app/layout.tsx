@@ -23,6 +23,14 @@ export const metadata: Metadata = {
   description:
     "Send a package across Yaba on a bike. Pay the rider in cash.",
   applicationName: "KoboRide",
+  appleWebApp: {
+    capable: true,
+    title: "KoboRide",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {

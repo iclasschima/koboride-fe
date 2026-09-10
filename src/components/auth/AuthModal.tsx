@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { Button } from "@/components/ui/Button";
+import { activatePush, primePushPermission } from "@/lib/push";
 
 const inputClass =
   "h-12 w-full rounded-2xl bg-[#EEEDE8] px-3.5 text-[15px] text-[#1A1A16] outline-none placeholder:text-[#8A8780]";
@@ -38,7 +39,9 @@ export function AuthModal() {
     setBusy(true);
     setError("");
     try {
+      primePushPermission();
       await login(phone);
+      void activatePush("customer");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not sign in");
     } finally {

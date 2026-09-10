@@ -21,7 +21,7 @@ export default function AdminUsersPage() {
 
   return (
     <div>
-      <h1 className="font-display text-[26px] font-semibold tracking-[-0.03em]">
+      <h1 className="font-display text-[22px] font-semibold tracking-[-0.03em] md:text-[26px]">
         Users
       </h1>
       <p className="mt-1 text-[14px] text-[#8A8780]">
@@ -32,7 +32,7 @@ export default function AdminUsersPage() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search name or phone"
-        className="mt-5 h-10 w-full max-w-xs rounded-lg bg-white px-3 text-[14px] ring-1 ring-black/8 outline-none placeholder:text-[#8A8780] focus:ring-brand/40"
+        className="mt-5 h-10 w-full rounded-lg bg-white px-3 text-[14px] ring-1 ring-black/8 outline-none placeholder:text-[#8A8780] focus:ring-brand/40 md:max-w-xs"
       />
 
       <section className="mt-5 overflow-hidden rounded-xl border border-black/6 bg-white">
@@ -51,62 +51,98 @@ export default function AdminUsersPage() {
             }
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-[13px]">
-              <thead className="border-b border-black/6 bg-[#FAFAF7] text-[11px] font-semibold tracking-[0.05em] text-[#8A8780] uppercase">
-                <tr>
-                  <th className="px-4 py-3 font-semibold">User</th>
-                  <th className="px-4 py-3 font-semibold">Phone</th>
-                  <th className="px-4 py-3 font-semibold">Joined</th>
-                  <th className="px-4 py-3 font-semibold">Orders</th>
-                  <th className="px-4 py-3 font-semibold">Spent</th>
-                  <th className="px-4 py-3 font-semibold">Last order</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((user) => (
-                  <tr
-                    key={user.id}
-                    className="border-b border-black/5 last:border-0 hover:bg-[#FAFAF7]"
-                  >
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/admin/users/${user.id}`}
-                        className="font-semibold text-brand hover:underline"
-                      >
-                        {user.name?.trim() || "No name"}
-                      </Link>
-                      {user.isRider ? (
-                        <span className="ml-2 inline-flex rounded-full bg-[#DCEEE4] px-2 py-0.5 text-[10px] font-semibold text-brand">
-                          Rider
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">{user.phone}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-[#8A8780]">
-                      {formatDate(user.createdAt)}
-                    </td>
-                    <td className="px-4 py-3 num">{user.ordersCount}</td>
-                    <td className="px-4 py-3 num font-medium text-accent">
-                      {formatNaira(user.spentNgn)}
-                    </td>
-                    <td className="px-4 py-3">
+          <>
+            <ul className="divide-y divide-black/5 md:hidden">
+              {rows.map((user) => (
+                <li key={user.id}>
+                  <Link href={`/admin/users/${user.id}`} className="block px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-display text-[15px] font-semibold">
+                          {user.name?.trim() || "No name"}
+                          {user.isRider ? (
+                            <span className="ml-2 inline-flex rounded-full bg-[#DCEEE4] px-2 py-0.5 align-middle text-[10px] font-semibold text-brand">
+                              Rider
+                            </span>
+                          ) : null}
+                        </p>
+                        <p className="mt-0.5 text-[13px] text-[#8A8780]">{user.phone}</p>
+                      </div>
+                      <p className="num shrink-0 text-[13px] font-semibold text-accent">
+                        {formatNaira(user.spentNgn)}
+                      </p>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-3 text-[12px] text-[#8A8780]">
+                      <p>
+                        {user.ordersCount} {user.ordersCount === 1 ? "order" : "orders"} ·{" "}
+                        {formatDate(user.createdAt)}
+                      </p>
                       {user.lastOrderAt && user.lastOrderStatus ? (
-                        <div>
-                          <StatusBadge status={user.lastOrderStatus} />
-                          <p className="mt-1 text-[12px] text-[#8A8780]">
-                            {formatDateTime(user.lastOrderAt)}
-                          </p>
-                        </div>
-                      ) : (
-                        <span className="text-[#8A8780]">—</span>
-                      )}
-                    </td>
+                        <StatusBadge status={user.lastOrderStatus} />
+                      ) : null}
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[720px] text-left text-[13px]">
+                <thead className="border-b border-black/6 bg-[#FAFAF7] text-[11px] font-semibold tracking-[0.05em] text-[#8A8780] uppercase">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">User</th>
+                    <th className="px-4 py-3 font-semibold">Phone</th>
+                    <th className="px-4 py-3 font-semibold">Joined</th>
+                    <th className="px-4 py-3 font-semibold">Orders</th>
+                    <th className="px-4 py-3 font-semibold">Spent</th>
+                    <th className="px-4 py-3 font-semibold">Last order</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {rows.map((user) => (
+                    <tr
+                      key={user.id}
+                      className="border-b border-black/5 last:border-0 hover:bg-[#FAFAF7]"
+                    >
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/admin/users/${user.id}`}
+                          className="font-semibold text-brand hover:underline"
+                        >
+                          {user.name?.trim() || "No name"}
+                        </Link>
+                        {user.isRider ? (
+                          <span className="ml-2 inline-flex rounded-full bg-[#DCEEE4] px-2 py-0.5 text-[10px] font-semibold text-brand">
+                            Rider
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">{user.phone}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-[#8A8780]">
+                        {formatDate(user.createdAt)}
+                      </td>
+                      <td className="px-4 py-3 num">{user.ordersCount}</td>
+                      <td className="px-4 py-3 num font-medium text-accent">
+                        {formatNaira(user.spentNgn)}
+                      </td>
+                      <td className="px-4 py-3">
+                        {user.lastOrderAt && user.lastOrderStatus ? (
+                          <div>
+                            <StatusBadge status={user.lastOrderStatus} />
+                            <p className="mt-1 text-[12px] text-[#8A8780]">
+                              {formatDateTime(user.lastOrderAt)}
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-[#8A8780]">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
     </div>

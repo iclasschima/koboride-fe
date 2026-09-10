@@ -17,7 +17,7 @@ import { COMING_SOON_AREAS, SEARCH_PLACES, type Place } from "@/lib/places";
 import { quoteFee, isInYabaZone } from "@/lib/fare";
 import { formatNaira } from "@/lib/format";
 import { useCreateTripMutation } from "@/lib/query/hooks";
-import { ensureNotifyPermission } from "@/lib/notify";
+import { activatePush, primePushPermission } from "@/lib/push";
 import { cn } from "@/lib/cn";
 import { tripHeadline, type Trip } from "@/types/request";
 
@@ -239,7 +239,8 @@ export function BookingSheet({
     }
     if (!pickupPlace || !dropoffPlace) return;
     setError("");
-    void ensureNotifyPermission();
+    primePushPermission();
+    void activatePush("customer");
     try {
       const trip = await createTrip.mutateAsync({
         pickup: pickupPlace.name,

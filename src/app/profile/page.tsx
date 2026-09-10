@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { WhatsAppSupport } from "@/components/support/WhatsAppSupport";
+import { EnableNotifications } from "@/components/notify/EnableNotifications";
+import { AddToHomeScreenCard } from "@/components/pwa/AddToHomeScreen";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
 const inputClass =
@@ -97,6 +99,17 @@ export default function ProfilePage() {
           {busy ? "Saving…" : "Save"}
         </Button>
       </form>
+
+      <section className="mt-6">
+        <h2 className="font-display text-[18px] font-semibold">Notifications</h2>
+        <p className="mt-1 text-[14px] text-[#8A8780]">
+          Alerts turn on when you sign in or book. Chrome will ask once. You can
+          switch them off here.
+        </p>
+        <EnableNotifications role="customer" />
+      </section>
+
+      <AddToHomeScreenCard />
 
       <WhatsAppSupport className="mt-6" />
 

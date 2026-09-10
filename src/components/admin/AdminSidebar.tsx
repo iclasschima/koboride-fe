@@ -29,6 +29,11 @@ export function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
+  function signOut() {
+    logoutAdmin();
+    router.replace("/admin/login");
+  }
+
   return (
     <>
       <aside className="hidden w-60 shrink-0 flex-col bg-brand text-[#FAFAF7] md:flex">
@@ -67,10 +72,7 @@ export function AdminSidebar() {
           <button
             type="button"
             className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] text-white/65 hover:bg-white/8 hover:text-white"
-            onClick={() => {
-              logoutAdmin();
-              router.replace("/admin/login");
-            }}
+            onClick={signOut}
           >
             <LogOut className="h-4 w-4" />
             Sign out
@@ -78,42 +80,48 @@ export function AdminSidebar() {
         </div>
       </aside>
 
-      <div className="border-b border-black/6 bg-brand text-[#FAFAF7] md:hidden">
-        <div className="flex items-center justify-between px-4 py-3">
+      <div className="sticky top-0 z-30 shrink-0 border-b border-white/10 bg-brand text-[#FAFAF7] md:hidden">
+        <div className="flex items-center justify-between px-4 pt-[max(0.65rem,env(safe-area-inset-top))] pb-3">
           <p className="font-display text-[16px] font-semibold">KoboRide Ops</p>
-          <div className="flex gap-3 text-[12px]">
-            <button
-              type="button"
-              className="text-white/70"
-              onClick={() => {
-                logoutAdmin();
-                router.replace("/admin/login");
-              }}
-            >
-              Sign out
-            </button>
-          </div>
+          <button
+            type="button"
+            className="text-[13px] font-medium text-white/75"
+            onClick={signOut}
+          >
+            Sign out
+          </button>
         </div>
-        <nav className="flex">
+      </div>
+
+      <nav
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-black/8 bg-white pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1 md:hidden"
+        aria-label="Ops"
+      >
+        <ul className="grid grid-cols-4">
           {NAV.map((item) => {
             const active = isActive(pathname, item.href, item.exact);
+            const Icon = item.icon;
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex-1 py-2.5 text-center text-[13px] font-semibold",
-                  active
-                    ? "border-b-2 border-accent text-white"
-                    : "text-white/60",
-                )}
-              >
-                {item.label}
-              </Link>
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className={cn(
+                    "flex flex-col items-center gap-0.5 px-1 py-1.5 text-[10px] font-semibold",
+                    active ? "text-[#1A1A16]" : "text-[#8A8780]",
+                  )}
+                >
+                  <Icon
+                    className="h-5 w-5"
+                    strokeWidth={active ? 2.4 : 1.75}
+                    aria-hidden
+                  />
+                  {item.label}
+                </Link>
+              </li>
             );
           })}
-        </nav>
-      </div>
+        </ul>
+      </nav>
     </>
   );
 }

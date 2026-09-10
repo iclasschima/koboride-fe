@@ -6,7 +6,7 @@ import { CityMap } from "@/components/map/CityMap";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { setRiderOnline } from "@/lib/api/requests";
-import { ensureNotifyPermission } from "@/lib/notify";
+import { activatePush, primePushPermission } from "@/lib/push";
 import {
   useAcceptJobMutation,
   useRiderActiveJobs,
@@ -64,7 +64,10 @@ export default function RiderHomePage() {
           onClick={() => {
             const next = !online;
             setOnline(next);
-            if (next) void ensureNotifyPermission();
+            if (next) {
+              primePushPermission();
+              void activatePush("rider");
+            }
             void setRiderOnline(next).catch(() => setOnline(!next));
           }}
           className={cn(

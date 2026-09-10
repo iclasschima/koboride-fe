@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { StatusStepper } from "@/components/ui/StatusStepper";
@@ -12,6 +12,7 @@ import {
   useAdminTrip,
   useAdminRiders,
   useAssignOrderMutation,
+  useDeleteAdminOrderMutation,
   useMarkPayoutPaidMutation,
   useOverrideStatusMutation,
 } from "@/lib/query/hooks";
@@ -27,14 +28,17 @@ const OVERRIDE: TripStatus[] = [
 
 export default function AdminOrderDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const { data: trip, isPending, isError } = useAdminTrip(params.id);
   const { data: ridersList = [] } = useAdminRiders();
   const assign = useAssignOrderMutation();
   const override = useOverrideStatusMutation();
   const markPaid = useMarkPayoutPaidMutation();
+  const removeOrder = useDeleteAdminOrderMutation();
   const [riderId, setRiderId] = useState("");
   const [status, setStatus] = useState<TripStatus>("dispatching");
   const [error, setError] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const riders = ridersList.filter((u) => u.approved);
 
@@ -65,8 +69,8 @@ export default function AdminOrderDetailPage() {
 
       <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-[26px] font-semibold tracking-[-0.03em]">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="font-display text-[22px] font-semibold tracking-[-0.03em] md:text-[26px]">
               {shortId(trip.id)}
             </h1>
             <StatusBadge status={trip.status} />
@@ -75,7 +79,7 @@ export default function AdminOrderDetailPage() {
             {tripHeadline(trip)} · {formatDateTime(trip.createdAt)}
           </p>
         </div>
-        <p className="num text-[28px] font-semibold text-accent">
+        <p className="num text-[24px] font-semibold text-accent md:text-[28px]">
           {formatNaira(trip.feeNgn)}
         </p>
       </div>
@@ -186,6 +190,60 @@ export default function AdminOrderDetailPage() {
             </Button>
           </section>
         ) : null}
+
+        <section className="rounded-xl border border-danger/20 bg-white p-5">
+          <h2 className="text-[11px] font-semibold tracking-[0.07em] text-danger uppercase">
+            Delete order
+          </h2>
+          <p className="mt-3 text-[14px] text-[#8A8780]">
+            Permanently remove this order from records. Use this for sample or test
+            data.
+          </p>
+          {confirmDelete ? (
+            <div className="mt-3 flex gap-2">
+              <Button
+                className="flex-1"
+                size="md"
+                variant="secondary"
+                disabled={removeOrder.isPending}
+                onClick={() => setConfirmDelete(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1"
+                size="md"
+                variant="danger"
+                disabled={removeOrder.isPending}
+                onClick={() => {
+                  setError("");
+                  void removeOrder
+                    .mutateAsync(trip.id)
+                    .then(() => router.push("/admin/orders"))
+                    .catch((err) =>
+                      setError(
+                        err instanceof Error ? err.message : "Could not delete order",
+                      ),
+                    );
+                }}
+              >
+                {removeOrder.isPending ? "Deleting…" : "Confirm delete"}
+              </Button>
+            </div>
+          ) : (
+            <Button
+              className="mt-3 w-full"
+              size="md"
+              variant="danger"
+              onClick={() => {
+                setError("");
+                setConfirmDelete(true);
+              }}
+            >
+              Delete order
+            </Button>
+          )}
+        </section>
       </div>
     </div>
   );
@@ -282,7 +340,13 @@ function PersonCard({
         {label}
       </h2>
       <p className="mt-3 font-display text-[18px] font-semibold">{name?.trim() || "—"}</p>
-      <p className="mt-1 text-[14px] text-[#8A8780]">{phone?.trim() || "—"}</p>
+      {phone?.trim() ? (
+        <a href={`tel:${phone.trim()}`} className="mt-1 inline-block text-[14px] text-brand">
+          {phone.trim()}
+        </a>
+      ) : (
+        <p className="mt-1 text-[14px] text-[#8A8780]">—</p>
+      )}
     </section>
   );
 }

@@ -19,6 +19,8 @@ import {
 import {
   addAdminRider,
   assignAdminOrder,
+  createAdminOrder,
+  deleteAdminOrder,
   getAdminCustomer,
   getAdminTrip,
   listAdminCustomers,
@@ -225,6 +227,18 @@ export function useAdminCustomer(id: string) {
   });
 }
 
+export function useCreateAdminOrderMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: createAdminOrder,
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: queryKeys.admin.all });
+      await qc.invalidateQueries({ queryKey: queryKeys.trips.all });
+      await qc.invalidateQueries({ queryKey: queryKeys.rider.all });
+    },
+  });
+}
+
 export function useAssignOrderMutation() {
   const qc = useQueryClient();
   return useMutation({
@@ -247,6 +261,18 @@ export function useOverrideStatusMutation() {
     }) => overrideAdminStatus(input.orderId, input.status, input.phase),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.admin.all });
+    },
+  });
+}
+
+export function useDeleteAdminOrderMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (orderId: string) => deleteAdminOrder(orderId),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: queryKeys.admin.all });
+      await qc.invalidateQueries({ queryKey: queryKeys.trips.all });
+      await qc.invalidateQueries({ queryKey: queryKeys.rider.all });
     },
   });
 }

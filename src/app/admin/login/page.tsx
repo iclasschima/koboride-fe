@@ -30,7 +30,7 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center px-4">
+    <div className="flex min-h-dvh items-center justify-center px-4 py-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
       <form
         onSubmit={onSubmit}
         className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-[0_16px_48px_rgba(15,61,46,0.12)]"

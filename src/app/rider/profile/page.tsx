@@ -1,6 +1,8 @@
 "use client";
 
 import { Button } from "@/components/ui/Button";
+import { EnableNotifications } from "@/components/notify/EnableNotifications";
+import { AddToHomeScreenCard } from "@/components/pwa/AddToHomeScreen";
 import { useRiderAuth } from "@/lib/auth/RiderAuthProvider";
 
 export default function RiderProfilePage() {
@@ -17,6 +19,17 @@ export default function RiderProfilePage() {
         {name}
       </h1>
       <p className="mt-1 text-[14px] text-[#8A8780]">{user?.phone}</p>
+
+      <section className="mt-8">
+        <h2 className="font-display text-[18px] font-semibold">Notifications</h2>
+        <p className="mt-1 text-[14px] text-[#8A8780]">
+          Alerts turn on when you sign in or go online. You can switch them off here.
+        </p>
+        <EnableNotifications role="rider" />
+      </section>
+
+      <AddToHomeScreenCard />
+
       <Button className="mt-8 w-full" variant="secondary" onClick={() => logout()}>
         Log out
       </Button>

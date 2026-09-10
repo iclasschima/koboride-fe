@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { OrdersTable } from "@/components/admin/OrdersTable";
 import { cn } from "@/lib/cn";
 import { useAdminTrips } from "@/lib/query/hooks";
@@ -45,21 +46,29 @@ export default function AdminOrdersPage() {
 
   return (
     <div>
-      <h1 className="font-display text-[26px] font-semibold tracking-[-0.03em]">
+      <h1 className="font-display text-[22px] font-semibold tracking-[-0.03em] md:text-[26px]">
         Orders
       </h1>
-      <p className="mt-1 text-[14px] text-[#8A8780]">
-        Open a row to assign or reassign a rider, override status, or mark a payout paid.
-      </p>
+      <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+        <p className="text-[14px] text-[#8A8780]">
+          Open a row to assign or reassign a rider, override status, or mark a payout paid.
+        </p>
+        <Link
+          href="/admin/orders/new"
+          className="inline-flex h-9 w-fit items-center rounded-full bg-brand px-4 text-[13px] font-semibold text-[#FAFAF7]"
+        >
+          Create order
+        </Link>
+      </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-2">
+      <div className="-mx-4 mt-5 flex items-center gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
         {FILTERS.map((item) => (
           <button
             key={item.id}
             type="button"
             onClick={() => setFilter(item.id)}
             className={cn(
-              "h-8 rounded-full px-3 text-[12px] font-semibold",
+              "h-8 shrink-0 rounded-full px-3 text-[12px] font-semibold",
               filter === item.id
                 ? "bg-brand text-[#FAFAF7]"
                 : "bg-white text-[#5C5A54] ring-1 ring-black/8",
@@ -74,7 +83,7 @@ export default function AdminOrdersPage() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search customer, rider, route, order ID"
-        className="mt-3 h-10 w-full max-w-sm rounded-lg bg-white px-3 text-[14px] ring-1 ring-black/8 outline-none placeholder:text-[#8A8780] focus:ring-brand/40"
+        className="mt-3 h-10 w-full rounded-lg bg-white px-3 text-[14px] ring-1 ring-black/8 outline-none placeholder:text-[#8A8780] focus:ring-brand/40 md:max-w-sm"
       />
 
       <section className="mt-5 overflow-hidden rounded-xl border border-black/6 bg-white">
@@ -89,7 +98,7 @@ export default function AdminOrdersPage() {
             emptyTitle={trips.length === 0 ? "No orders yet" : "No matching orders"}
             empty={
               trips.length === 0
-                ? "When a customer books a pickup, it will show up here — including if they cancel while searching."
+                ? "Create an order from here or wait for a customer booking."
                 : "No orders match these filters."
             }
           />

@@ -36,6 +36,26 @@ export async function getAdminCustomer(
   );
 }
 
+export async function createAdminOrder(input: {
+  customerName?: string;
+  customerPhone: string;
+  pickup: string;
+  dropoff: string;
+  notes: string;
+  pickupLat: number;
+  pickupLng: number;
+  dropoffLat: number;
+  dropoffLng: number;
+  senderName?: string;
+  senderPhone?: string;
+  receiverName: string;
+  receiverPhone: string;
+  riderId?: string;
+}): Promise<Trip> {
+  const data = await api.post<{ trip: Trip }>("/api/admin/orders", input, admin);
+  return data.trip;
+}
+
 export async function assignAdminOrder(orderId: string, riderId: string): Promise<Trip> {
   const data = await api.post<{ trip: Trip }>(
     `/api/admin/orders/${orderId}/assign`,
@@ -82,6 +102,10 @@ export async function setAdminRiderApproved(
     admin,
   );
   return data.rider;
+}
+
+export async function deleteAdminOrder(orderId: string): Promise<void> {
+  await api.delete(`/api/admin/orders/${orderId}`, admin);
 }
 
 export async function removeAdminRider(riderId: string): Promise<void> {

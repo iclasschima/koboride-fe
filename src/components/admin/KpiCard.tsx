@@ -18,7 +18,7 @@ export function KpiCard({
       </p>
       <p
         className={cn(
-          "mt-2 num text-[28px] leading-none font-semibold tracking-[-0.03em]",
+          "mt-2 num text-[22px] leading-none font-semibold tracking-[-0.03em] sm:text-[28px]",
           tone === "amber" && "text-accent",
           tone === "danger" && "text-danger",
           tone === "default" && "text-[#1A1A16]",
