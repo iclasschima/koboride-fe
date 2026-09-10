@@ -106,6 +106,8 @@ export default function AdminOrderDetailPage() {
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <PersonCard label="Customer" name={trip.customerName} phone={trip.customerPhone} />
         <PersonCard label="Rider" name={trip.riderName} phone={trip.riderPhone} />
+        <PersonCard label="Pickup from" name={trip.senderName} phone={trip.senderPhone} />
+        <PersonCard label="Deliver to" name={trip.receiverName} phone={trip.receiverPhone} />
       </div>
 
       {error ? (
@@ -279,8 +281,8 @@ function PersonCard({
       <h2 className="text-[11px] font-semibold tracking-[0.07em] text-[#8A8780] uppercase">
         {label}
       </h2>
-      <p className="mt-3 font-display text-[18px] font-semibold">{name ?? "Unassigned"}</p>
-      <p className="mt-1 text-[14px] text-[#8A8780]">{phone ?? "—"}</p>
+      <p className="mt-3 font-display text-[18px] font-semibold">{name?.trim() || "—"}</p>
+      <p className="mt-1 text-[14px] text-[#8A8780]">{phone?.trim() || "—"}</p>
     </section>
   );
 }

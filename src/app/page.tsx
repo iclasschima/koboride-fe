@@ -6,7 +6,7 @@ import { LocateFixed, MapPin, UserRound } from "lucide-react";
 import { BookingSheet } from "@/components/request/BookingSheet";
 import { CityMap } from "@/components/map/CityMap";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { SERVICE_AREA } from "@/lib/places";
+import { COMING_SOON_AREAS, SERVICE_AREA } from "@/lib/places";
 import { useTrips } from "@/lib/query/hooks";
 import { isActiveTrip } from "@/types/request";
 
@@ -38,7 +38,7 @@ export default function HomePage() {
       <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="inline-flex items-center gap-1.5 rounded-full bg-[#FAFAF7] px-3 py-2 text-[13px] font-bold text-[#1A1A16] shadow-[0_8px_24px_rgba(15,61,46,0.12)]">
           <MapPin className="h-3.5 w-3.5 text-brand" strokeWidth={2.4} />
-          {SERVICE_AREA} only
+          {SERVICE_AREA} now · {COMING_SOON_AREAS[0]} soon
         </div>
         <button
           type="button"

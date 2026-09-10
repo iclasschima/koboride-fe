@@ -23,6 +23,20 @@ export function formatDate(iso: string): string {
   }).format(new Date(iso));
 }
 
+export function formatCountdown(ms: number): string {
+  const totalMinutes = Math.max(0, Math.round(ms / 60_000));
+  if (totalMinutes < 1) return "less than a minute";
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const hourText = hours === 1 ? "1 hour" : `${hours} hours`;
+  const minuteText = minutes === 1 ? "1 minute" : `${minutes} minutes`;
+
+  if (hours > 0 && minutes > 0) return `${hourText} ${minuteText}`;
+  if (hours > 0) return hourText;
+  return minuteText;
+}
+
 export function shortId(id: string): string {
   return id.replace(/-/g, "").slice(0, 8).toUpperCase();
 }

@@ -30,13 +30,18 @@ import {
   setAdminRiderApproved,
 } from "@/lib/api/admin";
 import { queryKeys } from "@/lib/query/keys";
-import type { CreateTripInput, RiderPhase, TripStatus } from "@/types/request";
+import { isActiveTrip, type CreateTripInput, type RiderPhase, type TripStatus } from "@/types/request";
 
 export function useTrips(enabled = true) {
   return useQuery({
     queryKey: queryKeys.trips.list(),
     queryFn: listTrips,
     enabled,
+    refetchInterval: (query) => {
+      const trips = query.state.data;
+      if (!trips?.some(isActiveTrip)) return false;
+      return 8_000;
+    },
   });
 }
 
@@ -49,6 +54,7 @@ export function useTrip(id: string, enabled = true) {
       const trip = query.state.data;
       if (!trip) return false;
       if (trip.status === "dispatching") return 4_000;
+      if (trip.status === "in_progress" && trip.riderPhase === "delivered") return 4_000;
       if (trip.status === "in_progress") return 12_000;
       return false;
     },

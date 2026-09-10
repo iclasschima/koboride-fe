@@ -30,6 +30,9 @@ export default function AdminOrdersPage() {
         trip.dropoff,
         trip.customerName,
         trip.customerPhone,
+        trip.senderName,
+        trip.receiverName,
+        trip.receiverPhone,
         trip.riderName,
         trip.notes,
       ]

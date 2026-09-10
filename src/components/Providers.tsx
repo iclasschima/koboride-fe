@@ -5,6 +5,7 @@ import { RiderAuthProvider } from "@/lib/auth/RiderAuthProvider";
 import { QueryProvider } from "@/lib/query/QueryProvider";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { MobileShell } from "@/components/layout/MobileShell";
+import { OrderNotifications } from "@/components/notify/OrderNotifications";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -12,6 +13,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <AuthProvider>
         <RiderAuthProvider>
           <MobileShell>{children}</MobileShell>
+          <OrderNotifications />
           <AuthModal />
         </RiderAuthProvider>
       </AuthProvider>

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, LocateFixed, MapPin, Package, ShoppingBag, Star } from "lucide-react";
+import { ChevronLeft, LocateFixed, MapPin, Package, ShoppingBag, Star, User } from "lucide-react";
 import { AppSheet } from "@/components/ui/AppSheet";
 import { Button } from "@/components/ui/Button";
 import { FareNumber } from "@/components/ui/FareNumber";
@@ -13,10 +13,11 @@ import {
   reverseGeocode,
   type GooglePlaceSuggestion,
 } from "@/lib/api/places";
-import { SEARCH_PLACES, type Place } from "@/lib/places";
+import { COMING_SOON_AREAS, SEARCH_PLACES, type Place } from "@/lib/places";
 import { quoteFee, isInYabaZone } from "@/lib/fare";
 import { formatNaira } from "@/lib/format";
 import { useCreateTripMutation } from "@/lib/query/hooks";
+import { ensureNotifyPermission } from "@/lib/notify";
 import { cn } from "@/lib/cn";
 import { tripHeadline, type Trip } from "@/types/request";
 
@@ -39,7 +40,7 @@ export function BookingSheet({
   onRouteChange: (pickup: string | null, dropoff: string | null) => void;
 }) {
   const router = useRouter();
-  const { authenticated, openAuth } = useAuth();
+  const { authenticated, openAuth, user } = useAuth();
   const createTrip = useCreateTripMutation();
 
   const [snap, setSnap] = useState<number | string | null>(PEEK);
@@ -54,6 +55,8 @@ export function BookingSheet({
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
   const [notes, setNotes] = useState("");
+  const [receiverName, setReceiverName] = useState("");
+  const [receiverPhone, setReceiverPhone] = useState("");
   const [error, setError] = useState("");
   const sessionRef = useRef(newSession());
 
@@ -167,7 +170,9 @@ export function BookingSheet({
     try {
       const gps = await readGps();
       if (!isInYabaZone(gps.lat, gps.lng)) {
-        setSearchError("You're outside Yaba. Pickup and drop-off must be in Yaba.");
+        setSearchError(
+          "You're outside Yaba. Surulere and other areas are coming soon.",
+        );
         return;
       }
       const place = await reverseGeocode(gps.lat, gps.lng);
@@ -195,7 +200,7 @@ export function BookingSheet({
     try {
       const place = await placeDetails(hit.id, sessionRef.current);
       if (!isInYabaZone(place.lat, place.lng)) {
-        setSearchError("KoboRide only operates in Yaba");
+        setSearchError("KoboRide is Yaba-only for now. Surulere and more are coming soon.");
         return;
       }
       sessionRef.current = newSession();
@@ -222,6 +227,8 @@ export function BookingSheet({
     setPickupPlace(null);
     setDropoffPlace(null);
     setNotes("");
+    setReceiverName("");
+    setReceiverPhone("");
     setError("");
   }
 
@@ -232,11 +239,16 @@ export function BookingSheet({
     }
     if (!pickupPlace || !dropoffPlace) return;
     setError("");
+    void ensureNotifyPermission();
     try {
       const trip = await createTrip.mutateAsync({
         pickup: pickupPlace.name,
         dropoff: dropoffPlace.name,
         notes,
+        senderName: user?.name?.trim() || "Customer",
+        senderPhone: user?.phone ?? "",
+        receiverName: receiverName.trim(),
+        receiverPhone: receiverPhone.trim(),
         pickupLat: pickupPlace.lat,
         pickupLng: pickupPlace.lng,
         dropoffLat: dropoffPlace.lat,
@@ -281,7 +293,7 @@ export function BookingSheet({
               Send something across Yaba
             </h1>
             <p className="mt-1 text-[13px] text-[#8A8780]">
-              Yaba only. Pickup & drop-off on a bike. Pay the rider in cash.
+              Live in Yaba. Surulere, Gbagada and more coming soon.
             </p>
             <div className="mt-4 grid grid-cols-2 gap-2.5">
               <button
@@ -353,7 +365,9 @@ export function BookingSheet({
             <h2 className="font-display text-[20px] font-semibold tracking-[-0.03em]">
               Set locations
             </h2>
-            <p className="mt-1 text-[13px] text-[#8A8780]">Pickup and drop-off must both be in Yaba.</p>
+            <p className="mt-1 text-[13px] text-[#8A8780]">
+              Pickup and drop-off in Yaba. Other areas coming soon.
+            </p>
             <div className="mt-4 space-y-2">
               <button
                 type="button"
@@ -397,7 +411,7 @@ export function BookingSheet({
               disabled={!pickup.trim() || !dropoff.trim()}
               onClick={() => {
                 setStep("details");
-                setSnap(MID);
+                setSnap(TALL);
               }}
             >
               Continue
@@ -410,7 +424,9 @@ export function BookingSheet({
             <h2 className="shrink-0 font-display text-[20px] font-semibold tracking-[-0.03em]">
               {searchTarget === "pickup" ? "Pickup" : "Drop-off"}
             </h2>
-            <p className="mt-1 shrink-0 text-[13px] text-[#8A8780]">Yaba addresses only.</p>
+            <p className="mt-1 shrink-0 text-[13px] text-[#8A8780]">
+              Yaba now. Surulere and other areas coming soon.
+            </p>
             <input
               autoFocus
               value={query}
@@ -463,6 +479,23 @@ export function BookingSheet({
                     </li>
                   ))
                 : null}
+              {showQuick ? (
+                <li className="py-3">
+                  <p className="text-[11px] font-semibold tracking-[0.06em] text-[#8A8780] uppercase">
+                    Coming soon
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {COMING_SOON_AREAS.map((area) => (
+                      <span
+                        key={area}
+                        className="rounded-full bg-[#EEEDE8] px-2.5 py-1 text-[12px] font-medium text-[#8A8780]"
+                      >
+                        {area}
+                      </span>
+                    ))}
+                  </div>
+                </li>
+              ) : null}
               {!showQuick && searching ? (
                 <li className="py-3 text-[13px] text-[#8A8780]">Searching…</li>
               ) : null}
@@ -484,10 +517,14 @@ export function BookingSheet({
                           <MapPin className="h-4 w-4" />
                         </span>
                         <span>
-                          <span className="block text-[15px] font-semibold">{place.name}</span>
-                          <span className="block text-[13px] text-[#8A8780]">
-                            {resolvingId === place.id ? "Loading…" : place.area}
+                          <span className="block text-[15px] leading-snug font-semibold">
+                            {place.name}
                           </span>
+                          {resolvingId === place.id ? (
+                            <span className="block text-[13px] text-[#8A8780]">Loading…</span>
+                          ) : place.area ? (
+                            <span className="block text-[13px] text-[#8A8780]">{place.area}</span>
+                          ) : null}
                         </span>
                       </button>
                     </li>
@@ -499,15 +536,52 @@ export function BookingSheet({
 
         {step === "details" ? (
           <div>
-            <h2 className="font-display text-[20px] font-semibold tracking-[-0.03em]">
-              What are we moving?
+            <h2 className="font-display text-[22px] font-semibold tracking-[-0.03em]">
+              Package details
             </h2>
-            <textarea
-              className="mt-4 min-h-24 w-full resize-none rounded-2xl bg-[#EEEDE8] px-4 py-3 text-[15px] outline-none placeholder:text-[#8A8780]"
-              placeholder="A small bag, documents, a food pack…"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
+            <p className="mt-1 text-[13px] text-[#8A8780]">
+              What’s going, and who the rider should call at drop-off.
+            </p>
+
+            <label className="mt-5 block">
+              <span className="text-[13px] font-medium text-[#8A8780]">What’s moving</span>
+              <textarea
+                className="mt-1.5 min-h-22 w-full resize-none rounded-2xl bg-[#EEEDE8] px-4 py-3 text-[15px] outline-none placeholder:text-[#8A8780]"
+                placeholder="A small bag, documents, a food pack…"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </label>
+
+            <div className="mt-4 rounded-[22px] bg-[#EEEDE8] p-4">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#FAFAF7] text-brand">
+                  <User className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="font-display text-[15px] font-semibold tracking-[-0.02em]">
+                    Receiver
+                  </p>
+                  <p className="text-[12px] text-[#8A8780]">Name and phone at drop-off</p>
+                </div>
+              </div>
+              <input
+                className="mt-3.5 h-12 w-full rounded-2xl bg-[#FAFAF7] px-4 text-[15px] outline-none placeholder:text-[#8A8780]"
+                placeholder="Name"
+                value={receiverName}
+                onChange={(e) => setReceiverName(e.target.value)}
+                autoComplete="name"
+              />
+              <input
+                className="mt-2 h-12 w-full rounded-2xl bg-[#FAFAF7] px-4 text-[15px] outline-none placeholder:text-[#8A8780]"
+                placeholder="Phone number"
+                inputMode="tel"
+                autoComplete="tel"
+                value={receiverPhone}
+                onChange={(e) => setReceiverPhone(e.target.value)}
+              />
+            </div>
+
             {error ? (
               <p className="mt-3 text-[13px] font-medium text-danger">{error}</p>
             ) : null}
@@ -516,6 +590,10 @@ export function BookingSheet({
               onClick={() => {
                 if (!notes.trim()) {
                   setError("Tell us what we’re moving");
+                  return;
+                }
+                if (receiverName.trim().length < 2 || receiverPhone.trim().length < 7) {
+                  setError("Add the receiver name and phone");
                   return;
                 }
                 setError("");

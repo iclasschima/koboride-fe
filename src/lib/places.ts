@@ -1,5 +1,13 @@
 export const SERVICE_AREA = "Yaba";
 
+/** Areas we show as a teaser. Not bookable yet. */
+export const COMING_SOON_AREAS = [
+  "Surulere",
+  "Gbagada",
+  "Ikeja",
+  "Lekki",
+] as const;
+
 export type Place = {
   name: string;
   area: string;

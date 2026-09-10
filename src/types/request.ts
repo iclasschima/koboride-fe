@@ -16,6 +16,10 @@ export type Trip = {
   pickup: string;
   dropoff: string;
   notes: string;
+  senderName: string;
+  senderPhone: string;
+  receiverName: string;
+  receiverPhone: string;
   feeNgn: number;
   status: TripStatus;
   riderPhase: RiderPhase | null;
@@ -28,12 +32,18 @@ export type Trip = {
   payoutPaid: boolean;
   createdAt: string;
   updatedAt: string;
+  autoConfirmAt: string | null;
+  autoConfirmInMs: number | null;
 };
 
 export type CreateTripInput = {
   pickup: string;
   dropoff: string;
   notes: string;
+  senderName: string;
+  senderPhone: string;
+  receiverName: string;
+  receiverPhone: string;
   pickupLat: number;
   pickupLng: number;
   dropoffLat: number;
@@ -62,7 +72,7 @@ export const RIDER_PHASES: RiderPhase[] = [
   "delivered",
 ];
 
-export const YABA_FLAT_FEE_NGN = 1500;
+export const YABA_FLAT_FEE_NGN = 1000;
 
 export function isActiveTrip(trip: Trip): boolean {
   return trip.status === "dispatching" || trip.status === "in_progress";

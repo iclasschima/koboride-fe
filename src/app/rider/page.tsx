@@ -4,10 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CityMap } from "@/components/map/CityMap";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { FareNumber } from "@/components/ui/FareNumber";
 import { Button } from "@/components/ui/Button";
-import { formatNaira } from "@/lib/format";
 import { setRiderOnline } from "@/lib/api/requests";
+import { ensureNotifyPermission } from "@/lib/notify";
 import {
   useAcceptJobMutation,
   useRiderActiveJobs,
@@ -35,7 +34,6 @@ export default function RiderHomePage() {
 
   const job = active[0];
   const todayTrips = earned.filter((trip) => isSameDay(trip.updatedAt));
-  const todayPayout = todayTrips.reduce((sum, trip) => sum + trip.payoutNgn, 0);
 
   if (mePending) {
     return <div className="h-full animate-pulse bg-[#E4DFD4]" />;
@@ -66,6 +64,7 @@ export default function RiderHomePage() {
           onClick={() => {
             const next = !online;
             setOnline(next);
+            if (next) void ensureNotifyPermission();
             void setRiderOnline(next).catch(() => setOnline(!next));
           }}
           className={cn(
@@ -91,21 +90,13 @@ export default function RiderHomePage() {
           </span>
         </button>
 
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <div className="rounded-2xl bg-[#FAFAF7]/95 px-4 py-3 shadow-[0_8px_24px_rgba(15,61,46,0.1)]">
-            <p className="text-[11px] font-medium tracking-[0.06em] text-[#8A8780] uppercase">
-              Today
-            </p>
-            <p className="num mt-1 text-[22px] font-semibold">
-              {todayTrips.length} {todayTrips.length === 1 ? "job" : "jobs"}
-            </p>
-          </div>
-          <div className="rounded-2xl bg-[#FAFAF7]/95 px-4 py-3 shadow-[0_8px_24px_rgba(15,61,46,0.1)]">
-            <p className="text-[11px] font-medium tracking-[0.06em] text-[#8A8780] uppercase">
-              Earned
-            </p>
-            <FareNumber amount={todayPayout} className="mt-1 text-[22px]" />
-          </div>
+        <div className="mt-3 w-fit min-w-40 rounded-2xl bg-[#FAFAF7]/95 px-4 py-3 shadow-[0_8px_24px_rgba(15,61,46,0.1)]">
+          <p className="text-[11px] font-medium tracking-[0.06em] text-[#8A8780] uppercase">
+            Today
+          </p>
+          <p className="num mt-1 text-[22px] font-semibold">
+            {todayTrips.length} {todayTrips.length === 1 ? "job" : "jobs"}
+          </p>
         </div>
       </div>
 
@@ -189,10 +180,7 @@ function AwaitingRow({
     <li className="rounded-2xl bg-[#EEEDE8] px-4 py-3">
       <p className="truncate text-[14px] font-medium text-[#1A1A16]">{trip.pickup}</p>
       <p className="truncate text-[13px] text-[#8A8780]">→ {trip.dropoff}</p>
-      <div className="mt-2 flex items-center justify-between gap-3">
-        <p className="num text-[13px] font-semibold text-accent">
-          {formatNaira(trip.feeNgn)}
-        </p>
+      <div className="mt-2 flex justify-end">
         <Button
           type="button"
           size="md"

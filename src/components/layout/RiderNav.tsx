@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bike, Wallet, UserRound } from "lucide-react";
+import { Bike, ClipboardList, UserRound } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const TABS = [
   { href: "/rider", label: "Home", icon: Bike },
-  { href: "/rider/earnings", label: "Earnings", icon: Wallet },
+  { href: "/rider/earnings", label: "Jobs", icon: ClipboardList },
   { href: "/rider/profile", label: "Profile", icon: UserRound },
 ] as const;
 

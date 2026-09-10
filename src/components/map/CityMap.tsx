@@ -152,6 +152,12 @@ export function CityMap({
           <text x="40" y="588" fontSize="10" opacity="0.45">
             Yabatech
           </text>
+          <text x="8" y="720" fontSize="10" opacity="0.32">
+            Surulere · soon
+          </text>
+          <text x="268" y="248" fontSize="10" opacity="0.32">
+            Gbagada · soon
+          </text>
         </g>
 
         {showBikes
