@@ -35,8 +35,7 @@ export default function TripDetailPage() {
   const confirmCompletion = useConfirmCompletionMutation();
 
   const [snap, setSnap] = useState<number | string | null>(PEEK);
-  const [now, setNow] = useState(() => Date.now());
-  const [countdownOrigin, setCountdownOrigin] = useState(() => Date.now());
+  const [autoConfirmLeft, setAutoConfirmLeft] = useState<number | null>(null);
 
   useEffect(() => {
     if (trip?.riderPhase === "delivered" || trip?.status === "completed") {
@@ -45,22 +44,25 @@ export default function TripDetailPage() {
   }, [trip?.riderPhase, trip?.status]);
 
   useEffect(() => {
-    if (trip?.status !== "in_progress" || trip.riderPhase !== "delivered") {
+    const due =
+      trip?.status === "in_progress" && trip.riderPhase === "delivered"
+        ? trip.autoConfirmInMs
+        : null;
+    if (due == null || !trip) {
+      setAutoConfirmLeft(null);
       return;
     }
-    setCountdownOrigin(Date.now());
-    setNow(Date.now());
-    const tick = window.setInterval(() => setNow(Date.now()), 1_000);
-    return () => window.clearInterval(tick);
-  }, [trip?.status, trip?.riderPhase, trip?.autoConfirmInMs, trip?.updatedAt]);
-
-  useEffect(() => {
-    if (trip?.status !== "in_progress" || trip.riderPhase !== "delivered") return;
-    if (trip.autoConfirmInMs == null) return;
-    const timer = window.setTimeout(() => {
+    const started = Date.now();
+    const remaining = () => due - (Date.now() - started);
+    setAutoConfirmLeft(remaining());
+    const tick = window.setInterval(() => setAutoConfirmLeft(remaining()), 15_000);
+    const done = window.setTimeout(() => {
       void confirmCompletion.mutateAsync(trip.id).catch(() => undefined);
-    }, Math.max(0, trip.autoConfirmInMs));
-    return () => window.clearTimeout(timer);
+    }, Math.max(0, due));
+    return () => {
+      window.clearInterval(tick);
+      window.clearTimeout(done);
+    };
   }, [confirmCompletion, trip?.autoConfirmInMs, trip?.id, trip?.riderPhase, trip?.status]);
 
   useEffect(() => {
@@ -102,10 +104,6 @@ export default function TripDetailPage() {
   const mapMode: MapMode =
     searching ? "searching" : trip.pickup && trip.dropoff ? "route" : "idle";
   const initial = (trip.riderName ?? "R").trim().charAt(0).toUpperCase();
-  const autoConfirmLeft =
-    trip.autoConfirmInMs == null
-      ? 0
-      : trip.autoConfirmInMs - (now - countdownOrigin);
 
   return (
     <div className="relative h-full overflow-hidden bg-[#E4DFD4]">
@@ -214,7 +212,7 @@ export default function TripDetailPage() {
 
             {delivered ? (
               <div>
-                {trip.autoConfirmInMs != null ? (
+                {autoConfirmLeft != null ? (
                   <p className="mb-3 text-center text-[13px] text-[#8A8780]">
                     {autoConfirmLeft > 0
                       ? `Auto-confirms in ${formatCountdown(autoConfirmLeft)}`

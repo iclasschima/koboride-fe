@@ -30,7 +30,12 @@ import {
   setAdminRiderApproved,
 } from "@/lib/api/admin";
 import { queryKeys } from "@/lib/query/keys";
-import { isActiveTrip, type CreateTripInput, type RiderPhase, type TripStatus } from "@/types/request";
+import {
+  isActiveTrip,
+  type CreateTripInput,
+  type RiderPhase,
+  type TripStatus,
+} from "@/types/request";
 
 export function useTrips(enabled = true) {
   return useQuery({

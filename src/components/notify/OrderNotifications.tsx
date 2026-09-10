@@ -4,8 +4,7 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useRiderAuth } from "@/lib/auth/RiderAuthProvider";
-import { customerOrderAlert, tripSig } from "@/lib/order-alerts";
-import { showOrderNotification } from "@/lib/notify";
+import { customerOrderAlert, showOrderNotification, tripSig } from "@/lib/notify";
 import {
   useRiderActiveJobs,
   useRiderAvailableJobs,

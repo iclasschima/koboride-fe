@@ -32,7 +32,6 @@ export type Trip = {
   payoutPaid: boolean;
   createdAt: string;
   updatedAt: string;
-  autoConfirmAt: string | null;
   autoConfirmInMs: number | null;
 };
 
