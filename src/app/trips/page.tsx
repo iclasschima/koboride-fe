@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/Button";
 import { TripStatusCard } from "@/components/trips/TripStatusCard";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useTrips } from "@/lib/query/hooks";
-import { isActiveTrip } from "@/types/request";
 
 export default function TripsPage() {
   const { authenticated, openAuth, ready } = useAuth();
@@ -56,20 +55,13 @@ export default function TripsPage() {
         />
       ) : (
         <ul className="space-y-2.5">
-          {trips.map((trip) => {
-            const card = <TripStatusCard trip={trip} />;
-            return (
-              <li key={trip.id}>
-                {isActiveTrip(trip) ? (
-                  <Link href={`/trips/${trip.id}`} className="block">
-                    {card}
-                  </Link>
-                ) : (
-                  card
-                )}
-              </li>
-            );
-          })}
+          {trips.map((trip) => (
+            <li key={trip.id}>
+              <Link href={`/trips/${trip.id}`} className="block">
+                <TripStatusCard trip={trip} />
+              </Link>
+            </li>
+          ))}
         </ul>
       )}
     </div>

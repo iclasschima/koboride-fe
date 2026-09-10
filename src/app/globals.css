@@ -163,12 +163,29 @@ h4 {
   animation: kb-draw-route 680ms ease-out forwards;
 }
 
+@keyframes kb-bike-mark {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.5px);
+  }
+}
+
+.kb-bike-mark {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: kb-bike-mark 2.8s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .kb-pulse,
   .kb-loc-ring,
   .kb-search-ring,
   .kb-pin-drop,
-  .kb-route-draw {
+  .kb-route-draw,
+  .kb-bike-mark {
     animation: none;
   }
 

@@ -1,14 +1,12 @@
 # KoboRide
 
-Pickup & drop-off in Yaba only. ₦1,500 flat. Cash to the rider. Admin assigns the job.
+Pickup and drop-off in Yaba. Cash to the rider.
 
 ```bash
 cp .env.example .env.local
 npm run dev
 ```
 
-API: `http://localhost:3001` (koboride-be). OTP is skipped in development; sign in with a phone number only.
+API: `http://localhost:3001` (koboride-be). Sign in with a phone number.
 
-Address search uses Google Places via the API (`GOOGLE_PLACES_API_KEY` on the backend). Places outside Yaba cannot be selected.
-
-Then `/admin/orders` → assign a rider → rider taps status → customer confirms delivered.
+Customers book at `/`. Riders sign in at `/rider` and accept waiting jobs. Ops signs in at `/admin`.

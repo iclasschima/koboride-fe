@@ -3,9 +3,11 @@
 import { usePathname } from "next/navigation";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { RiderNav } from "@/components/layout/RiderNav";
+import { useRiderAuth } from "@/lib/auth/RiderAuthProvider";
 import { cn } from "@/lib/cn";
 
 export function MobileShell({ children }: { children: React.ReactNode }) {
+  const { authenticated: riderAuthenticated } = useRiderAuth();
   const pathname = usePathname();
 
   const isAdmin = pathname.startsWith("/admin");
@@ -19,7 +21,8 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     !isTripDetail &&
     (pathname === "/" || pathname === "/trips" || pathname === "/profile");
 
-  const showRiderNav = isRider && !isRiderJob;
+  const showRiderNav =
+    isRider && !isRiderJob && pathname !== "/rider/login" && riderAuthenticated;
   const mapChrome =
     pathname === "/" ||
     pathname === "/rider" ||

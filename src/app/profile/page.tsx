@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { WhatsAppSupport } from "@/components/support/WhatsAppSupport";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
 const inputClass =
@@ -45,6 +46,7 @@ export default function ProfilePage() {
         <Button className="mt-5" onClick={() => openAuth("login")}>
           Sign in
         </Button>
+        <WhatsAppSupport className="mt-8 text-left" />
       </div>
     );
   }
@@ -96,8 +98,10 @@ export default function ProfilePage() {
         </Button>
       </form>
 
+      <WhatsAppSupport className="mt-6" />
+
       <Button
-        className="mt-6 w-full"
+        className="mt-3 w-full"
         variant="secondary"
         onClick={() => void logout()}
       >

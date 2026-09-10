@@ -1,20 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Bike,
   ClipboardList,
   LayoutDashboard,
-  Smartphone,
+  LogOut,
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { logoutAdmin } from "@/lib/api/client";
 
 const NAV = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/admin/orders", label: "Orders", icon: ClipboardList, exact: false },
-  { href: "/admin/users", label: "Riders", icon: Users, exact: false },
+  { href: "/admin/users", label: "Users", icon: Users, exact: false },
+  { href: "/admin/riders", label: "Riders", icon: Bike, exact: false },
 ] as const;
 
 function isActive(pathname: string, href: string, exact: boolean) {
@@ -25,6 +27,7 @@ function isActive(pathname: string, href: string, exact: boolean) {
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
 
   return (
     <>
@@ -61,23 +64,17 @@ export function AdminSidebar() {
         </nav>
 
         <div className="space-y-1 border-t border-white/10 px-3 py-4">
-          <p className="px-3 pb-2 text-[10px] font-semibold tracking-[0.08em] text-white/40 uppercase">
-            Apps
-          </p>
-          <Link
-            href="/"
-            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-white/65 hover:bg-white/8 hover:text-white"
+          <button
+            type="button"
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] text-white/65 hover:bg-white/8 hover:text-white"
+            onClick={() => {
+              logoutAdmin();
+              router.replace("/admin/login");
+            }}
           >
-            <Smartphone className="h-4 w-4" />
-            Customer
-          </Link>
-          <Link
-            href="/rider"
-            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-white/65 hover:bg-white/8 hover:text-white"
-          >
-            <Bike className="h-4 w-4" />
-            Rider
-          </Link>
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </button>
         </div>
       </aside>
 
@@ -85,12 +82,16 @@ export function AdminSidebar() {
         <div className="flex items-center justify-between px-4 py-3">
           <p className="font-display text-[16px] font-semibold">KoboRide Ops</p>
           <div className="flex gap-3 text-[12px]">
-            <Link href="/" className="text-white/70">
-              Customer
-            </Link>
-            <Link href="/rider" className="text-white/70">
-              Rider
-            </Link>
+            <button
+              type="button"
+              className="text-white/70"
+              onClick={() => {
+                logoutAdmin();
+                router.replace("/admin/login");
+              }}
+            >
+              Sign out
+            </button>
           </div>
         </div>
         <nav className="flex">

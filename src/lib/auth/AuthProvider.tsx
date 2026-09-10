@@ -11,9 +11,8 @@ import {
 import {
   getStoredSession,
   logout as apiLogout,
-  requestOtp,
+  signIn,
   updateProfile,
-  verifyOtp,
 } from "@/lib/api/auth";
 import type { User } from "@/types/user";
 
@@ -26,13 +25,7 @@ type AuthContextValue = {
   authOpen: AuthMode;
   openAuth: (mode?: AuthMode) => void;
   closeAuth: () => void;
-  sendOtp: (phone: string) => Promise<{
-    expires_in_seconds?: number;
-    devCode?: string;
-    token?: string;
-    user?: User;
-  }>;
-  verify: (phone: string, code: string) => Promise<User>;
+  login: (phone: string) => Promise<User>;
   saveProfile: (input: { name: string }) => Promise<User>;
   logout: () => Promise<void>;
 };
@@ -61,19 +54,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const closeAuth = useCallback(() => setAuthOpen(null), []);
 
-  const sendOtp = useCallback(async (phone: string) => {
-    const result = await requestOtp(phone);
-    if (result.token && result.user) {
-      setUser(result.user);
-      setToken(result.token);
-      if (!result.user.name) setAuthOpen("profile");
-      else setAuthOpen(null);
-    }
-    return result;
-  }, []);
-
-  const verify = useCallback(async (phone: string, code: string) => {
-    const next = await verifyOtp(phone, code);
+  const login = useCallback(async (phone: string) => {
+    const next = await signIn(phone);
     setUser(next);
     setToken(getStoredSession().token);
     if (!next.name) setAuthOpen("profile");
@@ -102,23 +84,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       authOpen,
       openAuth,
       closeAuth,
-      sendOtp,
-      verify,
+      login,
       saveProfile,
       logout,
     }),
-    [
-      ready,
-      token,
-      user,
-      authOpen,
-      openAuth,
-      closeAuth,
-      sendOtp,
-      verify,
-      saveProfile,
-      logout,
-    ],
+    [ready, token, user, authOpen, openAuth, closeAuth, login, saveProfile, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -10,12 +10,13 @@ import { Button } from "@/components/ui/Button";
 import { formatDateTime, formatNaira, shortId } from "@/lib/format";
 import {
   useAdminTrip,
-  useAdminUsers,
+  useAdminRiders,
   useAssignOrderMutation,
   useMarkPayoutPaidMutation,
   useOverrideStatusMutation,
 } from "@/lib/query/hooks";
-import { tripHeadline, type TripStatus } from "@/types/request";
+import { tripHeadline, type Trip, type TripStatus } from "@/types/request";
+import type { OpsUser } from "@/types/user";
 
 const OVERRIDE: TripStatus[] = [
   "dispatching",
@@ -27,7 +28,7 @@ const OVERRIDE: TripStatus[] = [
 export default function AdminOrderDetailPage() {
   const params = useParams<{ id: string }>();
   const { data: trip, isPending, isError } = useAdminTrip(params.id);
-  const { data: users = [] } = useAdminUsers();
+  const { data: ridersList = [] } = useAdminRiders();
   const assign = useAssignOrderMutation();
   const override = useOverrideStatusMutation();
   const markPaid = useMarkPayoutPaidMutation();
@@ -35,7 +36,7 @@ export default function AdminOrderDetailPage() {
   const [status, setStatus] = useState<TripStatus>("dispatching");
   const [error, setError] = useState("");
 
-  const riders = users.filter((u) => u.approved);
+  const riders = ridersList.filter((u) => u.approved);
 
   if (isPending) {
     return <div className="h-64 animate-pulse rounded-xl bg-[#EEEDE8]" />;
@@ -112,39 +113,24 @@ export default function AdminOrderDetailPage() {
       ) : null}
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
-        {trip.status === "dispatching" ? (
-          <section className="rounded-xl border border-black/6 bg-white p-5">
-            <h2 className="text-[11px] font-semibold tracking-[0.07em] text-[#8A8780] uppercase">
-              Assign rider
-            </h2>
-            <select
-              value={riderId}
-              onChange={(e) => setRiderId(e.target.value)}
-              className="mt-3 h-10 w-full rounded-lg bg-[#FAFAF7] px-3 text-[14px] ring-1 ring-black/8 outline-none"
-            >
-              <option value="">Select rider</option>
-              {riders.map((rider) => (
-                <option key={rider.id} value={rider.id}>
-                  {rider.name}
-                </option>
-              ))}
-            </select>
-            <Button
-              className="mt-3 w-full"
-              size="md"
-              disabled={!riderId || assign.isPending}
-              onClick={() => {
-                setError("");
-                void assign
-                  .mutateAsync({ orderId: trip.id, riderId })
-                  .catch((err) =>
-                    setError(err instanceof Error ? err.message : "Assign failed"),
-                  );
-              }}
-            >
-              {assign.isPending ? "Assigning…" : "Assign"}
-            </Button>
-          </section>
+        {trip.status === "dispatching" ||
+        (trip.status === "in_progress" && trip.riderPhase !== "delivered") ? (
+          <AssignRiderCard
+            trip={trip}
+            riders={riders}
+            riderId={riderId}
+            setRiderId={setRiderId}
+            pending={assign.isPending}
+            onAssign={() => {
+              setError("");
+              void assign
+                .mutateAsync({ orderId: trip.id, riderId })
+                .then(() => setRiderId(""))
+                .catch((err) =>
+                  setError(err instanceof Error ? err.message : "Assign failed"),
+                );
+            }}
+          />
         ) : null}
 
         <section className="rounded-xl border border-black/6 bg-white p-5">
@@ -200,6 +186,73 @@ export default function AdminOrderDetailPage() {
         ) : null}
       </div>
     </div>
+  );
+}
+
+function AssignRiderCard({
+  trip,
+  riders,
+  riderId,
+  setRiderId,
+  pending,
+  onAssign,
+}: {
+  trip: Trip;
+  riders: OpsUser[];
+  riderId: string;
+  setRiderId: (id: string) => void;
+  pending: boolean;
+  onAssign: () => void;
+}) {
+  const assigned = Boolean(trip.riderId);
+  const choices = riders.filter((rider) => rider.id !== trip.riderId);
+  const label = assigned ? "Reassign rider" : "Assign rider";
+
+  return (
+    <section className="rounded-xl border border-black/6 bg-white p-5">
+      <h2 className="text-[11px] font-semibold tracking-[0.07em] text-[#8A8780] uppercase">
+        {label}
+      </h2>
+      {assigned ? (
+        <p className="mt-2 text-[13px] text-[#8A8780]">
+          Currently assigned to {trip.riderName}. Pick another rider to move this job.
+        </p>
+      ) : (
+        <p className="mt-2 text-[13px] text-[#8A8780]">
+          Waiting for a rider. Choose who should take this order.
+        </p>
+      )}
+      {choices.length === 0 ? (
+        <p className="mt-3 text-[14px] text-[#8A8780]">
+          {assigned
+            ? "Add another approved rider to reassign."
+            : "Add an approved rider first."}
+        </p>
+      ) : (
+        <>
+          <select
+            value={riderId}
+            onChange={(e) => setRiderId(e.target.value)}
+            className="mt-3 h-10 w-full rounded-lg bg-[#FAFAF7] px-3 text-[14px] ring-1 ring-black/8 outline-none"
+          >
+            <option value="">Select rider</option>
+            {choices.map((rider) => (
+              <option key={rider.id} value={rider.id}>
+                {rider.name}
+              </option>
+            ))}
+          </select>
+          <Button
+            className="mt-3 w-full"
+            size="md"
+            disabled={!riderId || pending}
+            onClick={onAssign}
+          >
+            {pending ? (assigned ? "Reassigning…" : "Assigning…") : assigned ? "Reassign" : "Assign"}
+          </Button>
+        </>
+      )}
+    </section>
   );
 }
 

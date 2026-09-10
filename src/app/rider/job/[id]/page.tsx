@@ -7,7 +7,7 @@ import { CityMap } from "@/components/map/CityMap";
 import { Button } from "@/components/ui/Button";
 import { FareNumber } from "@/components/ui/FareNumber";
 import { StatusStepper } from "@/components/ui/StatusStepper";
-import { useAdvanceRiderMutation, useTrip } from "@/lib/query/hooks";
+import { useAdvanceRiderMutation, useRiderTrip } from "@/lib/query/hooks";
 import type { RiderPhase } from "@/types/request";
 
 const NEXT_LABEL: Record<RiderPhase, string> = {
@@ -21,7 +21,7 @@ const NEXT_LABEL: Record<RiderPhase, string> = {
 export default function RiderJobPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { data: trip, isPending, isError } = useTrip(params.id);
+  const { data: trip, isPending, isError } = useRiderTrip(params.id);
   const advance = useAdvanceRiderMutation();
 
   if (isPending) {

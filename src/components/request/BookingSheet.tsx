@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bike, ChevronLeft, MapPin, Package, ShoppingBag, Star } from "lucide-react";
+import { ChevronLeft, LocateFixed, MapPin, Package, ShoppingBag, Star } from "lucide-react";
 import { AppSheet } from "@/components/ui/AppSheet";
 import { Button } from "@/components/ui/Button";
 import { FareNumber } from "@/components/ui/FareNumber";
@@ -10,9 +10,10 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import {
   autocompletePlaces,
   placeDetails,
+  reverseGeocode,
   type GooglePlaceSuggestion,
 } from "@/lib/api/places";
-import { DEFAULT_PICKUP, SEARCH_PLACES, type Place } from "@/lib/places";
+import { SEARCH_PLACES, type Place } from "@/lib/places";
 import { quoteFee, isInYabaZone } from "@/lib/fare";
 import { formatNaira } from "@/lib/format";
 import { useCreateTripMutation } from "@/lib/query/hooks";
@@ -21,10 +22,6 @@ import { tripHeadline, type Trip } from "@/types/request";
 
 function newSession() {
   return crypto.randomUUID();
-}
-
-function defaultPickup(): Place {
-  return SEARCH_PLACES.find((p) => p.name === DEFAULT_PICKUP) ?? SEARCH_PLACES[0]!;
 }
 
 const PEEK = 0.34;
@@ -47,7 +44,7 @@ export function BookingSheet({
 
   const [snap, setSnap] = useState<number | string | null>(PEEK);
   const [step, setStep] = useState<Step>("peek");
-  const [pickupPlace, setPickupPlace] = useState<Place>(defaultPickup);
+  const [pickupPlace, setPickupPlace] = useState<Place | null>(null);
   const [dropoffPlace, setDropoffPlace] = useState<Place | null>(null);
   const [searchTarget, setSearchTarget] = useState<SearchTarget>("dropoff");
   const [query, setQuery] = useState("");
@@ -55,11 +52,12 @@ export function BookingSheet({
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
   const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
   const sessionRef = useRef(newSession());
 
-  const pickup = pickupPlace.name;
+  const pickup = pickupPlace?.name ?? "";
   const dropoff = dropoffPlace?.name ?? "";
   const typed = query.trim();
   const showQuick = typed.length < 2;
@@ -73,7 +71,7 @@ export function BookingSheet({
   }, [step, pickup, dropoff, onRouteChange]);
 
   const fee = useMemo(() => {
-    if (!dropoffPlace) return 0;
+    if (!pickupPlace || !dropoffPlace) return 0;
     return quoteFee({
       pickupLat: pickupPlace.lat,
       pickupLng: pickupPlace.lng,
@@ -139,6 +137,58 @@ export function BookingSheet({
     setSnap(MID);
   }
 
+  function readGps(): Promise<{ lat: number; lng: number }> {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error("Location is not available on this device"));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) =>
+          resolve({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          }),
+        (err) => {
+          if (err.code === err.PERMISSION_DENIED) {
+            reject(new Error("Allow location to pin your exact street"));
+            return;
+          }
+          reject(new Error("Could not read your location. Try again."));
+        },
+        { enableHighAccuracy: true, timeout: 12_000, maximumAge: 5_000 },
+      );
+    });
+  }
+
+  async function pickCurrentLocation() {
+    setLocating(true);
+    setSearchError("");
+    try {
+      const gps = await readGps();
+      if (!isInYabaZone(gps.lat, gps.lng)) {
+        setSearchError("You're outside Yaba. Pickup and drop-off must be in Yaba.");
+        return;
+      }
+      const place = await reverseGeocode(gps.lat, gps.lng);
+      const selected: Place = {
+        name: place.name,
+        area: place.area,
+        lat: gps.lat,
+        lng: gps.lng,
+        current: true,
+      };
+      if (searchTarget === "pickup") setPickupPlace(selected);
+      else setDropoffPlace(selected);
+      setStep("locations");
+      setSnap(MID);
+    } catch (err) {
+      setSearchError(err instanceof Error ? err.message : "Could not use current location");
+    } finally {
+      setLocating(false);
+    }
+  }
+
   async function pickGoogle(hit: GooglePlaceSuggestion) {
     setResolvingId(hit.id);
     setSearchError("");
@@ -169,7 +219,7 @@ export function BookingSheet({
   function reset() {
     setStep("peek");
     setSnap(PEEK);
-    setPickupPlace(defaultPickup());
+    setPickupPlace(null);
     setDropoffPlace(null);
     setNotes("");
     setError("");
@@ -180,7 +230,7 @@ export function BookingSheet({
       openAuth("login");
       return;
     }
-    if (!dropoffPlace) return;
+    if (!pickupPlace || !dropoffPlace) return;
     setError("");
     try {
       const trip = await createTrip.mutateAsync({
@@ -313,8 +363,13 @@ export function BookingSheet({
                 <span className="h-2.5 w-2.5 rounded-full bg-brand" />
                 <span className="min-w-0">
                   <span className="block text-[11px] font-medium text-[#8A8780]">Pickup</span>
-                  <span className="block truncate text-[15px] font-semibold">
-                    {pickup || "Add pickup"}
+                  <span
+                    className={cn(
+                      "block truncate text-[15px]",
+                      pickup ? "font-medium text-[#1A1A16]" : "font-normal text-[#8A8780]",
+                    )}
+                  >
+                    {pickup || "Where should we pick up?"}
                   </span>
                 </span>
               </button>
@@ -326,7 +381,12 @@ export function BookingSheet({
                 <span className="h-2.5 w-2.5 rounded-sm bg-brand" />
                 <span className="min-w-0">
                   <span className="block text-[11px] font-medium text-[#8A8780]">Drop-off</span>
-                  <span className="block truncate text-[15px] font-semibold">
+                  <span
+                    className={cn(
+                      "block truncate text-[15px]",
+                      dropoff ? "font-medium text-[#1A1A16]" : "font-normal text-[#8A8780]",
+                    )}
+                  >
                     {dropoff || "Where should it go?"}
                   </span>
                 </span>
@@ -362,6 +422,28 @@ export function BookingSheet({
               <p className="mt-2 shrink-0 text-[13px] font-medium text-danger">{searchError}</p>
             ) : null}
             <ul className="mt-2 min-h-0 flex-1 divide-y divide-black/5 overflow-y-auto">
+              {showQuick ? (
+                <li>
+                  <button
+                    type="button"
+                    disabled={locating}
+                    className="flex w-full items-center gap-3 py-3 text-left disabled:opacity-60"
+                    onClick={() => void pickCurrentLocation()}
+                  >
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#EEEDE8] text-brand">
+                      <LocateFixed className="h-4 w-4" />
+                    </span>
+                    <span>
+                      <span className="block text-[15px] font-semibold">
+                        {locating ? "Finding your street…" : "Use current location"}
+                      </span>
+                      <span className="block text-[13px] text-[#8A8780]">
+                        {locating ? "Using GPS for an exact pin" : "Pin the street you’re on"}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ) : null}
               {showQuick
                 ? SEARCH_PLACES.map((place) => (
                     <li key={place.name}>
@@ -371,11 +453,7 @@ export function BookingSheet({
                         onClick={() => pickQuick(place)}
                       >
                         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#EEEDE8] text-brand">
-                          {place.current ? (
-                            <Bike className="h-4 w-4" />
-                          ) : (
-                            <Star className="h-4 w-4" />
-                          )}
+                          <Star className="h-4 w-4" />
                         </span>
                         <span>
                           <span className="block text-[15px] font-semibold">{place.name}</span>

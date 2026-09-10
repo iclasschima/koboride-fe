@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { Button } from "@/components/ui/Button";
-import { useAuth } from "@/lib/auth/AuthProvider";
+import { useRiderAuth } from "@/lib/auth/RiderAuthProvider";
 
 export default function RiderProfilePage() {
-  const { user } = useAuth();
+  const { user, logout } = useRiderAuth();
   const name = user?.name?.trim() || "Rider";
   const initial = name.charAt(0).toUpperCase();
 
@@ -17,15 +16,10 @@ export default function RiderProfilePage() {
       <h1 className="mt-4 font-display text-[28px] font-semibold tracking-[-0.04em]">
         {name}
       </h1>
-      <p className="mt-1 text-[14px] text-[#8A8780]">{user?.phone ?? "Sign in as a rider"}</p>
-      <p className="mt-4 text-[13px] text-[#8A8780]">
-        Riders are approved by ops. There is no self-signup.
-      </p>
-      <Link href="/" className="mt-8 block">
-        <Button className="w-full" variant="secondary">
-          Switch to customer
-        </Button>
-      </Link>
+      <p className="mt-1 text-[14px] text-[#8A8780]">{user?.phone}</p>
+      <Button className="mt-8 w-full" variant="secondary" onClick={() => logout()}>
+        Log out
+      </Button>
     </div>
   );
 }

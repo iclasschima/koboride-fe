@@ -6,13 +6,18 @@ export const queryKeys = {
   },
   rider: {
     all: ["rider"] as const,
+    me: () => [...queryKeys.rider.all, "me"] as const,
+    job: (id: string) => [...queryKeys.rider.all, "job", id] as const,
     active: () => [...queryKeys.rider.all, "active"] as const,
+    available: () => [...queryKeys.rider.all, "available"] as const,
     earnings: () => [...queryKeys.rider.all, "earnings"] as const,
   },
   admin: {
     all: ["admin"] as const,
     trips: () => [...queryKeys.admin.all, "trips"] as const,
     trip: (id: string) => [...queryKeys.admin.all, "trip", id] as const,
-    users: () => [...queryKeys.admin.all, "users"] as const,
+    riders: () => [...queryKeys.admin.all, "riders"] as const,
+    customers: () => [...queryKeys.admin.all, "customers"] as const,
+    customer: (id: string) => [...queryKeys.admin.all, "customer", id] as const,
   },
 };

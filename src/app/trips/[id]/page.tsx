@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft, Phone } from "lucide-react";
@@ -10,11 +10,14 @@ import { Button } from "@/components/ui/Button";
 import { StatusStepper } from "@/components/ui/StatusStepper";
 import { formatNaira } from "@/lib/format";
 import {
+  useAutoAssignMutation,
   useCancelOrderMutation,
   useConfirmCompletionMutation,
   useTrip,
 } from "@/lib/query/hooks";
 import { tripHeadline } from "@/types/request";
+
+const SEARCH_MS = 4_000;
 
 const PEEK = 0.38;
 const OPEN = 0.78;
@@ -25,6 +28,8 @@ export default function TripDetailPage() {
   const tripId = params.id;
 
   const { data: trip, isPending, isError } = useTrip(tripId);
+  const autoAssign = useAutoAssignMutation();
+  const assignOnce = useRef<string | null>(null);
   const cancelOrder = useCancelOrderMutation();
   const confirmCompletion = useConfirmCompletionMutation();
 
@@ -35,6 +40,20 @@ export default function TripDetailPage() {
       setSnap(OPEN);
     }
   }, [trip?.riderPhase, trip?.status]);
+
+  useEffect(() => {
+    if (!trip || trip.status !== "dispatching") return;
+    if (assignOnce.current === trip.id) return;
+    const elapsed = Date.now() - new Date(trip.createdAt).getTime();
+    const wait = Math.max(0, SEARCH_MS - elapsed);
+    const timer = window.setTimeout(() => {
+      assignOnce.current = trip.id;
+      void autoAssign.mutateAsync(trip.id).catch(() => {
+        assignOnce.current = null;
+      });
+    }, wait);
+    return () => window.clearTimeout(timer);
+  }, [autoAssign, trip]);
 
   if (isPending) {
     return (
@@ -102,6 +121,7 @@ export default function TripDetailPage() {
             <>
               <p className="font-display text-[22px] font-semibold tracking-[-0.03em]">
                 Searching for a rider
+                <span className="inline-flex w-[1.1em] animate-pulse">…</span>
               </p>
               <p className="mt-2 text-[13px] text-[#8A8780]">
                 <span className="num font-semibold">{formatNaira(trip.feeNgn)}</span>

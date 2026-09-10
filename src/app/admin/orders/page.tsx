@@ -46,7 +46,7 @@ export default function AdminOrdersPage() {
         Orders
       </h1>
       <p className="mt-1 text-[14px] text-[#8A8780]">
-        Open a row to assign a rider, override status, or mark a payout paid.
+        Open a row to assign or reassign a rider, override status, or mark a payout paid.
       </p>
 
       <div className="mt-5 flex flex-wrap items-center gap-2">
@@ -86,7 +86,7 @@ export default function AdminOrdersPage() {
             emptyTitle={trips.length === 0 ? "No orders yet" : "No matching orders"}
             empty={
               trips.length === 0
-                ? "When a customer books a pickup, it will show up here."
+                ? "When a customer books a pickup, it will show up here — including if they cancel while searching."
                 : "No orders match these filters."
             }
           />

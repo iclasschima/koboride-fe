@@ -3,24 +3,52 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CityMap } from "@/components/map/CityMap";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { FareNumber } from "@/components/ui/FareNumber";
-import { getRiderOnline, setRiderOnline } from "@/lib/api/requests";
-import { useRiderActiveJobs, useRiderEarnings } from "@/lib/query/hooks";
+import { Button } from "@/components/ui/Button";
+import { formatNaira } from "@/lib/format";
+import { setRiderOnline } from "@/lib/api/requests";
+import {
+  useAcceptJobMutation,
+  useRiderActiveJobs,
+  useRiderAvailableJobs,
+  useRiderEarnings,
+  useRiderMe,
+} from "@/lib/query/hooks";
 import { cn } from "@/lib/cn";
+import type { Trip } from "@/types/request";
 
 export default function RiderHomePage() {
   const router = useRouter();
   const [online, setOnline] = useState(false);
-  const { data: active = [] } = useRiderActiveJobs();
-  const { data: earned = [] } = useRiderEarnings();
+  const { data: me, isPending: mePending } = useRiderMe();
+  const approved = Boolean(me?.approved);
+  const { data: active = [] } = useRiderActiveJobs(approved);
+  const { data: awaiting = [] } = useRiderAvailableJobs(approved);
+  const { data: earned = [] } = useRiderEarnings(approved);
+  const accept = useAcceptJobMutation();
+  const [acceptError, setAcceptError] = useState("");
 
   useEffect(() => {
-    void getRiderOnline().then(setOnline);
-  }, []);
+    if (me) setOnline(me.online);
+  }, [me]);
 
   const job = active[0];
   const todayTrips = earned.filter((trip) => isSameDay(trip.updatedAt));
   const todayPayout = todayTrips.reduce((sum, trip) => sum + trip.payoutNgn, 0);
+
+  if (mePending) {
+    return <div className="h-full animate-pulse bg-[#E4DFD4]" />;
+  }
+
+  if (!approved) {
+    return (
+      <EmptyState
+        title="Not an approved rider"
+        description="Ops adds riders from the dashboard. There is no self-signup."
+      />
+    );
+  }
 
   return (
     <div className="relative h-full overflow-hidden bg-[#E4DFD4]">
@@ -81,25 +109,101 @@ export default function RiderHomePage() {
         </div>
       </div>
 
-      {job ? (
-        <button
-          type="button"
-          className="absolute inset-x-4 bottom-[5.5rem] z-20 rounded-2xl bg-brand px-4 py-4 text-left text-[#FAFAF7] shadow-[0_12px_32px_rgba(15,61,46,0.25)]"
-          onClick={() => router.push(`/rider/job/${job.id}`)}
+      <div className="absolute inset-x-0 bottom-0 z-20 max-h-[46%] overflow-y-auto rounded-t-[28px] bg-[#FAFAF7] px-4 pt-3 pb-4 shadow-[0_-8px_32px_rgba(15,61,46,0.12)]">
+        {job ? (
+          <button
+            type="button"
+            className="w-full rounded-2xl bg-brand px-4 py-3.5 text-left text-[#FAFAF7]"
+            onClick={() => router.push(`/rider/job/${job.id}`)}
+          >
+            <p className="text-[12px] font-medium text-white/70">Your assigned order</p>
+            <p className="font-display text-[16px] font-semibold">
+              Continue to {job.dropoff}
+            </p>
+          </button>
+        ) : null}
+
+        <h2
+          className={cn(
+            "font-display text-[16px] font-semibold tracking-[-0.02em]",
+            job ? "mt-4" : "mt-1",
+          )}
         >
-          <p className="text-[12px] font-medium text-white/70">Assigned order</p>
-          <p className="font-display text-[17px] font-semibold">
-            Continue to {job.dropoff}
+          Awaiting a rider
+        </h2>
+        {awaiting.length === 0 ? (
+          <p className="mt-2 text-[14px] text-[#8A8780]">
+            {online
+              ? "No orders waiting. New requests show up here."
+              : "Go online when you’re ready. New requests land here."}
           </p>
-        </button>
-      ) : (
-        <p className="absolute inset-x-4 bottom-[5.5rem] z-20 rounded-2xl bg-[#FAFAF7]/95 px-4 py-4 text-[14px] text-[#8A8780] shadow-[0_8px_24px_rgba(15,61,46,0.1)]">
-          {online
-            ? "No assigned job yet. Ops will assign you from admin."
-            : "Go online when you’re ready for the next assignment."}
-        </p>
-      )}
+        ) : (
+          <>
+            {acceptError ? (
+              <p className="mt-2 text-[13px] font-medium text-danger">{acceptError}</p>
+            ) : job ? (
+              <p className="mt-2 text-[13px] text-[#8A8780]">
+                Finish your current job before accepting another.
+              </p>
+            ) : null}
+            <ul className="mt-2 space-y-2">
+              {awaiting.map((trip) => (
+                <AwaitingRow
+                  key={trip.id}
+                  trip={trip}
+                  busy={Boolean(job) || accept.isPending}
+                  pending={accept.isPending && accept.variables === trip.id}
+                  onAccept={() => {
+                    setAcceptError("");
+                    void accept
+                      .mutateAsync(trip.id)
+                      .then((taken) => router.push(`/rider/job/${taken.id}`))
+                      .catch((err) =>
+                        setAcceptError(
+                          err instanceof Error ? err.message : "Could not accept this order",
+                        ),
+                      );
+                  }}
+                />
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
     </div>
+  );
+}
+
+function AwaitingRow({
+  trip,
+  busy,
+  pending,
+  onAccept,
+}: {
+  trip: Trip;
+  busy: boolean;
+  pending: boolean;
+  onAccept: () => void;
+}) {
+  return (
+    <li className="rounded-2xl bg-[#EEEDE8] px-4 py-3">
+      <p className="truncate text-[14px] font-medium text-[#1A1A16]">{trip.pickup}</p>
+      <p className="truncate text-[13px] text-[#8A8780]">→ {trip.dropoff}</p>
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <p className="num text-[13px] font-semibold text-accent">
+          {formatNaira(trip.feeNgn)}
+        </p>
+        <Button
+          type="button"
+          size="md"
+          className="h-10 px-4"
+          disabled={busy}
+          onClick={onAccept}
+        >
+          {pending ? "Accepting…" : "Accept"}
+        </Button>
+      </div>
+    </li>
   );
 }
 

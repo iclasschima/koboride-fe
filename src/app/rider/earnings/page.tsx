@@ -2,14 +2,29 @@
 
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDateTime, formatNaira } from "@/lib/format";
-import { useRiderEarnings } from "@/lib/query/hooks";
+import { useRiderEarnings, useRiderMe } from "@/lib/query/hooks";
 import { FareNumber } from "@/components/ui/FareNumber";
 
 export default function RiderEarningsPage() {
-  const { data: trips = [], isPending } = useRiderEarnings();
+  const { data: me, isPending: mePending } = useRiderMe();
+  const approved = Boolean(me?.approved);
+  const { data: trips = [], isPending } = useRiderEarnings(approved);
   const pending = trips.filter((t) => !t.payoutPaid);
   const paid = trips.filter((t) => t.payoutPaid);
   const balance = pending.reduce((sum, t) => sum + t.payoutNgn, 0);
+
+  if (mePending) {
+    return <div className="h-full animate-pulse bg-[#FAFAF7]" />;
+  }
+
+  if (!approved) {
+    return (
+      <EmptyState
+        title="Not an approved rider"
+        description="Ops adds riders from the dashboard. There is no self-signup."
+      />
+    );
+  }
 
   return (
     <div className="bg-[#FAFAF7] px-5 pt-6 pb-8">

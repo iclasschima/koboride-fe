@@ -1,6 +1,6 @@
 import { api } from "@/lib/api/client";
 import type { RiderPhase, Trip, TripStatus } from "@/types/request";
-import type { OpsUser } from "@/types/user";
+import type { AdminCustomer, OpsUser } from "@/types/user";
 
 const admin = { admin: true as const };
 
@@ -14,9 +14,26 @@ export async function getAdminTrip(id: string): Promise<Trip> {
   return data.trip;
 }
 
-export async function listAdminUsers(): Promise<OpsUser[]> {
+export async function listAdminRiders(): Promise<OpsUser[]> {
   const data = await api.get<{ riders: OpsUser[] }>("/api/admin/riders", admin);
   return data.riders;
+}
+
+export async function listAdminCustomers(): Promise<AdminCustomer[]> {
+  const data = await api.get<{ customers: AdminCustomer[] }>(
+    "/api/admin/customers",
+    admin,
+  );
+  return data.customers;
+}
+
+export async function getAdminCustomer(
+  id: string,
+): Promise<{ customer: AdminCustomer; trips: Trip[] }> {
+  return api.get<{ customer: AdminCustomer; trips: Trip[] }>(
+    `/api/admin/customers/${id}`,
+    admin,
+  );
 }
 
 export async function assignAdminOrder(orderId: string, riderId: string): Promise<Trip> {
@@ -65,4 +82,8 @@ export async function setAdminRiderApproved(
     admin,
   );
   return data.rider;
+}
+
+export async function removeAdminRider(riderId: string): Promise<void> {
+  await api.delete(`/api/admin/riders/${riderId}`, admin);
 }

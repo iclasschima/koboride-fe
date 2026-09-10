@@ -1,20 +1,38 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { getAdminToken } from "@/lib/api/client";
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const isLogin = pathname === "/admin/login";
   const [ready, setReady] = useState(false);
+  const [authed, setAuthed] = useState(false);
 
   useEffect(() => {
+    const token = Boolean(getAdminToken());
+    setAuthed(token);
     setReady(true);
-  }, []);
+    if (!token && !isLogin) router.replace("/admin/login");
+    if (token && isLogin) router.replace("/admin");
+  }, [isLogin, pathname, router]);
 
   if (!ready) {
+    return <div className="min-h-dvh bg-[#F4F2EC]" />;
+  }
+
+  if (isLogin) {
+    return <div className="min-h-dvh bg-[#F4F2EC]">{children}</div>;
+  }
+
+  if (!authed) {
     return <div className="min-h-dvh bg-[#F4F2EC]" />;
   }
 

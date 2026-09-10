@@ -25,6 +25,36 @@ function routePath(a: { x: number; y: number }, b: { x: number; y: number }) {
   return `M${a.x} ${a.y} C ${mx} ${a.y - 44}, ${mx} ${b.y + 44}, ${b.x} ${b.y}`;
 }
 
+function BikeMark({ heading = 0 }: { heading?: number }) {
+  return (
+    <g filter="url(#kb-bike-shadow)">
+      <circle r="9.5" fill="#FAFAF7" />
+      <circle r="8.2" fill="#F5A623" />
+      <g
+        transform={`rotate(${heading}) scale(0.42)`}
+        fill="none"
+        stroke="#1A1A16"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <circle cx="-7.2" cy="5.4" r="4.3" />
+        <circle cx="8.2" cy="5.4" r="4.3" />
+        <path d="M-7.2 5.4 H1.2 L4.2 -1.6 H10.2 M1.2 5.4 L-2.4 -2.2 H-8.4 M4.2 -1.6 L2.4 -7.2" />
+        <path d="M10.2 -1.6 V-4.4" />
+      </g>
+    </g>
+  );
+}
+
+const NEARBY_BIKES = [
+  { x: 118, y: 198, heading: -18 },
+  { x: 252, y: 156, heading: 22 },
+  { x: 196, y: 268, heading: 8 },
+  { x: 64, y: 292, heading: -28 },
+  { x: 308, y: 232, heading: 14 },
+];
+
 export function CityMap({
   className,
   mode = "idle",
@@ -36,6 +66,7 @@ export function CityMap({
   const user = { x: 176, y: 368 };
   const showRoute = Boolean(pickup && dropoff);
   const searching = mode === "searching";
+  const showBikes = mode === "idle" || mode === "searching";
   const d = pickup && dropoff ? routePath(pickup, dropoff) : "";
 
   return (
@@ -51,6 +82,9 @@ export function CityMap({
             <stop offset="0%" stopColor="#C5D5E3" />
             <stop offset="100%" stopColor="#AFC6D8" />
           </linearGradient>
+          <filter id="kb-bike-shadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="1.6" stdDeviation="1.4" floodOpacity="0.28" />
+          </filter>
         </defs>
 
         <rect width="390" height="760" fill="#E4DFD4" />
@@ -119,6 +153,16 @@ export function CityMap({
             Yabatech
           </text>
         </g>
+
+        {showBikes
+          ? NEARBY_BIKES.map((r) => (
+              <g key={`${r.x}-${r.y}`} transform={`translate(${r.x} ${r.y})`}>
+                <g className="kb-bike-mark">
+                  <BikeMark heading={r.heading} />
+                </g>
+              </g>
+            ))
+          : null}
 
         {showRoute ? (
           <path

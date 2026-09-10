@@ -36,3 +36,14 @@ export async function placeDetails(
   );
   return data.place;
 }
+
+export async function reverseGeocode(
+  lat: number,
+  lng: number,
+): Promise<GooglePlaceDetails> {
+  const params = new URLSearchParams({ lat: String(lat), lng: String(lng) });
+  const data = await api.get<{ place: GooglePlaceDetails }>(
+    `/api/places/reverse?${params}`,
+  );
+  return data.place;
+}

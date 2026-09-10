@@ -4,23 +4,23 @@ import Link from "next/link";
 import { KpiCard } from "@/components/admin/KpiCard";
 import { OrdersTable } from "@/components/admin/OrdersTable";
 import { formatNaira } from "@/lib/format";
-import { useAdminTrips, useAdminUsers } from "@/lib/query/hooks";
+import { useAdminTrips, useAdminRiders } from "@/lib/query/hooks";
 
 export default function AdminOverviewPage() {
   const { data: trips = [], isPending } = useAdminTrips();
-  const { data: users = [] } = useAdminUsers();
-
+  const { data: riders = [] } = useAdminRiders();
   const live = trips.filter(
     (t) => t.status === "dispatching" || t.status === "in_progress",
   );
   const searching = trips.filter((t) => t.status === "dispatching");
+  const cancelled = trips.filter((t) => t.status === "cancelled");
   const completedToday = trips.filter(
     (t) => t.status === "completed" && isToday(t.updatedAt),
   );
   const pendingPayout = trips
     .filter((t) => t.status === "completed" && !t.payoutPaid)
     .reduce((sum, t) => sum + t.payoutNgn, 0);
-  const riders = users.filter((u) => u.approved);
+  const approvedRiders = riders.filter((u) => u.approved);
 
   return (
     <div>
@@ -41,7 +41,7 @@ export default function AdminOverviewPage() {
         </Link>
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <KpiCard
           label="Live orders"
           value={isPending ? "—" : String(live.length)}
@@ -57,8 +57,13 @@ export default function AdminOverviewPage() {
           tone="amber"
         />
         <KpiCard
+          label="Cancelled"
+          value={isPending ? "—" : String(cancelled.length)}
+          hint="Still kept in order records"
+        />
+        <KpiCard
           label="Approved riders"
-          value={isPending ? "—" : String(riders.length)}
+          value={isPending ? "—" : String(approvedRiders.length)}
         />
       </div>
 
@@ -75,6 +80,21 @@ export default function AdminOverviewPage() {
               (t) => t.status === "dispatching" || t.status === "in_progress",
             )}
             empty="New pickup requests will land here."
+          />
+        )}
+      </section>
+
+      <section className="mt-8 overflow-hidden rounded-xl border border-black/6 bg-white">
+        <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
+          <h2 className="font-display text-[16px] font-semibold">Recent records</h2>
+          <p className="text-[12px] text-[#8A8780]">Includes cancelled</p>
+        </div>
+        {isPending ? (
+          <div className="h-48 animate-pulse bg-[#EEEDE8]" />
+        ) : (
+          <OrdersTable
+            trips={trips.slice(0, 20)}
+            empty="When a customer taps Find a rider, the order is saved here even if they cancel."
           />
         )}
       </section>
