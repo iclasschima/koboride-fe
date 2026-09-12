@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { KpiCard } from "@/components/admin/KpiCard";
 import { OrdersTable } from "@/components/admin/OrdersTable";
+import { EnableNotifications } from "@/components/notify/EnableNotifications";
 import { formatNaira } from "@/lib/format";
 import { useAdminTrips, useAdminRiders } from "@/lib/query/hooks";
 
@@ -48,6 +49,15 @@ export default function AdminOverviewPage() {
           </Link>
         </div>
       </div>
+
+      <section className="mt-6 rounded-xl border border-black/6 bg-white px-4 py-3">
+        <h2 className="font-display text-[16px] font-semibold">Alerts</h2>
+        <p className="mt-1 text-[13px] text-[#8A8780]">
+          Get a push when a customer signs up, a new order lands, or an order
+          status changes.
+        </p>
+        <EnableNotifications role="admin" />
+      </section>
 
       <div className="mt-6 grid grid-cols-2 gap-3 xl:grid-cols-5">
         <KpiCard

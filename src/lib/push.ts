@@ -1,9 +1,11 @@
 import { api } from "@/lib/api/client";
 
-export type PushAppRole = "customer" | "rider";
+export type PushAppRole = "customer" | "rider" | "admin";
 
 function authOpts(role: PushAppRole) {
-  return role === "rider" ? { rider: true as const } : {};
+  if (role === "rider") return { rider: true as const };
+  if (role === "admin") return { admin: true as const };
+  return {};
 }
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {

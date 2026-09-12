@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { loginAdmin } from "@/lib/api/client";
+import { activatePush, primePushPermission } from "@/lib/push";
 
 const inputClass =
   "h-12 w-full rounded-2xl bg-[#EEEDE8] px-3.5 text-[15px] text-[#1A1A16] outline-none placeholder:text-[#8A8780]";
@@ -20,7 +21,9 @@ export default function AdminLoginPage() {
     setBusy(true);
     setError("");
     try {
+      primePushPermission();
       await loginAdmin(email, password);
+      void activatePush("admin");
       router.replace("/admin");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not sign in");
