@@ -37,8 +37,7 @@ export function PullToRefresh({
   useEffect(() => {
     const el = scroller.current;
     if (!el) return;
-    const root =
-      el.closest("[data-ptr-root]") ?? el;
+    const root = (el.closest("[data-ptr-root]") ?? el) as HTMLElement;
 
     function atTop() {
       return (el?.scrollTop ?? 0) <= 0;
