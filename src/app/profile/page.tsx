@@ -7,6 +7,7 @@ import { EnableNotifications } from "@/components/notify/EnableNotifications";
 import { AddToHomeScreenCard } from "@/components/pwa/AddToHomeScreen";
 import { RiderEntryLink } from "@/components/layout/AppRoleSwitch";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { useOpenOps } from "@/lib/open-ops";
 
 const inputClass =
   "h-12 w-full rounded-2xl bg-[#EEEDE8] px-3.5 text-[15px] text-[#1A1A16] outline-none placeholder:text-[#8A8780]";
@@ -14,6 +15,7 @@ const inputClass =
 export default function ProfilePage() {
   const { authenticated, openAuth, user, saveProfile, logout, ready } =
     useAuth();
+  const openOps = useOpenOps();
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -40,7 +42,10 @@ export default function ProfilePage() {
   if (!authenticated) {
     return (
       <div className="flex flex-col items-center bg-[#FAFAF7] px-6 pt-16 text-center">
-        <h1 className="font-display text-[22px] font-bold tracking-[-0.03em] text-[#1A1A16]">
+        <h1
+          className="font-display text-[22px] font-bold tracking-[-0.03em] text-[#1A1A16]"
+          onClick={openOps}
+        >
           Account
         </h1>
         <p className="mt-2 text-[14px] text-[#8A8780]">
@@ -73,10 +78,19 @@ export default function ProfilePage() {
   return (
     <div className="bg-[#FAFAF7] px-4 pt-5 pb-8">
       <header className="mb-6">
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand font-display text-[22px] font-bold text-[#FAFAF7]">
+        <button
+          type="button"
+          className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand font-display text-[22px] font-bold text-[#FAFAF7]"
+          onClick={openOps}
+          aria-hidden
+          tabIndex={-1}
+        >
           {(user?.name ?? "You").trim().charAt(0).toUpperCase()}
-        </div>
-        <h1 className="font-display text-[28px] font-bold tracking-[-0.04em] text-[#1A1A16]">
+        </button>
+        <h1
+          className="font-display text-[28px] font-bold tracking-[-0.04em] text-[#1A1A16]"
+          onClick={openOps}
+        >
           Account
         </h1>
         <p className="mt-1 text-[14px] text-[#8A8780]">{user?.phone}</p>
