@@ -23,7 +23,7 @@ export default function RiderProfilePage() {
       <section className="mt-8">
         <h2 className="font-display text-[18px] font-semibold">Notifications</h2>
         <p className="mt-1 text-[14px] text-[#8A8780]">
-          Alerts turn on when you sign in or go online. You can switch them off here.
+          Alerts turn on when you sign in or go online.
         </p>
         <EnableNotifications role="rider" />
       </section>

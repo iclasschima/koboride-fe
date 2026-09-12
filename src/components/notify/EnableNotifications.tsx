@@ -6,7 +6,6 @@ import {
   getPushSubscription,
   pushSupported,
   subscribeToPush,
-  unsubscribeFromPush,
   type PushAppRole,
 } from "@/lib/push";
 import { usePwaInstall } from "@/components/pwa/PwaInstallProvider";
@@ -41,19 +40,6 @@ export function EnableNotifications({ role }: { role: PushAppRole }) {
       setEnabled(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not enable notifications");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function disable() {
-    setBusy(true);
-    setError("");
-    try {
-      await unsubscribeFromPush(role);
-      setEnabled(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not disable notifications");
     } finally {
       setBusy(false);
     }
@@ -98,24 +84,14 @@ export function EnableNotifications({ role }: { role: PushAppRole }) {
     );
   }
 
+  if (enabled) return null;
+
   return (
     <div className="mt-3">
       {error ? <p className="mb-2 text-[13px] font-medium text-danger">{error}</p> : null}
-      {enabled ? (
-        <Button
-          type="button"
-          className="w-full"
-          variant="secondary"
-          disabled={busy}
-          onClick={() => void disable()}
-        >
-          {busy ? "Saving…" : "Disable notifications"}
-        </Button>
-      ) : (
-        <Button type="button" className="w-full" disabled={busy} onClick={() => void enable()}>
-          {busy ? "Enabling…" : "Turn on alerts"}
-        </Button>
-      )}
+      <Button type="button" className="w-full" disabled={busy} onClick={() => void enable()}>
+        {busy ? "Enabling…" : "Turn on alerts"}
+      </Button>
     </div>
   );
 }
