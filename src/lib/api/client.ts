@@ -5,7 +5,12 @@ const RIDER_TOKEN_KEY = "koboride.riderToken";
 const RIDER_USER_KEY = "koboride.riderUser";
 const ADMIN_TOKEN_KEY = "koboride.opsToken";
 
-export type SessionUser = { id: string; phone: string; name: string | null };
+export type SessionUser = {
+  id: string;
+  phone: string;
+  name: string | null;
+  isRider?: boolean;
+};
 
 export class ApiError extends Error {
   constructor(

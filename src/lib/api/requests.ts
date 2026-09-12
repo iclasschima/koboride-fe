@@ -23,6 +23,22 @@ export async function createTrip(input: CreateTripInput): Promise<Trip> {
   return data.trip;
 }
 
+export type FareEstimate = {
+  feeNgn: number;
+  payoutNgn: number;
+  distanceKm: number;
+  maxDistanceKm: number;
+};
+
+export async function estimateFare(input: {
+  pickupLat: number;
+  pickupLng: number;
+  dropoffLat: number;
+  dropoffLng: number;
+}): Promise<FareEstimate> {
+  return api.post<FareEstimate>("/api/orders/estimate-fare", input, { token: null });
+}
+
 export async function cancelOrder(tripId: string): Promise<Trip> {
   const data = await api.post<{ trip: Trip }>(`/api/orders/${tripId}/cancel`);
   return data.trip;

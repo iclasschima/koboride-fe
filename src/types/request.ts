@@ -11,6 +11,8 @@ export type RiderPhase =
   | "en_route_dropoff"
   | "delivered";
 
+export type CustomerRole = "sender" | "receiver";
+
 export type Trip = {
   id: string;
   pickup: string;
@@ -20,6 +22,7 @@ export type Trip = {
   senderPhone: string;
   receiverName: string;
   receiverPhone: string;
+  customerRole?: CustomerRole;
   feeNgn: number;
   status: TripStatus;
   riderPhase: RiderPhase | null;
@@ -39,6 +42,7 @@ export type CreateTripInput = {
   pickup: string;
   dropoff: string;
   notes: string;
+  customerRole: CustomerRole;
   senderName: string;
   senderPhone: string;
   receiverName: string;

@@ -40,8 +40,8 @@ export function AuthModal() {
     setError("");
     try {
       primePushPermission();
-      await login(phone);
-      void activatePush("customer");
+      const user = await login(phone);
+      void activatePush(user.isRider ? "rider" : "customer");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not sign in");
     } finally {

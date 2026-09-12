@@ -13,13 +13,15 @@ import {
   reverseGeocode,
   type GooglePlaceSuggestion,
 } from "@/lib/api/places";
+import { ApiError } from "@/lib/api/client";
+import { estimateFare } from "@/lib/api/requests";
 import { COMING_SOON_AREAS, SEARCH_PLACES, type Place } from "@/lib/places";
 import { quoteFee, isInYabaZone } from "@/lib/fare";
 import { formatNaira } from "@/lib/format";
 import { useCreateTripMutation } from "@/lib/query/hooks";
 import { activatePush, primePushPermission } from "@/lib/push";
 import { cn } from "@/lib/cn";
-import { tripHeadline, type Trip } from "@/types/request";
+import { tripHeadline, type CustomerRole, type Trip } from "@/types/request";
 
 function newSession() {
   return crypto.randomUUID();
@@ -55,9 +57,12 @@ export function BookingSheet({
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
   const [notes, setNotes] = useState("");
-  const [receiverName, setReceiverName] = useState("");
-  const [receiverPhone, setReceiverPhone] = useState("");
+  const [customerRole, setCustomerRole] = useState<CustomerRole>("sender");
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [error, setError] = useState("");
+  const [distanceError, setDistanceError] = useState("");
+  const [checkingRange, setCheckingRange] = useState(false);
   const sessionRef = useRef(newSession());
 
   const pickup = pickupPlace?.name ?? "";
@@ -74,13 +79,52 @@ export function BookingSheet({
   }, [step, pickup, dropoff, onRouteChange]);
 
   const fee = useMemo(() => {
-    if (!pickupPlace || !dropoffPlace) return 0;
+    if (!pickupPlace || !dropoffPlace || distanceError) return 0;
     return quoteFee({
       pickupLat: pickupPlace.lat,
       pickupLng: pickupPlace.lng,
       dropoffLat: dropoffPlace.lat,
       dropoffLng: dropoffPlace.lng,
     });
+  }, [pickupPlace, dropoffPlace, distanceError]);
+
+  useEffect(() => {
+    if (!pickupPlace || !dropoffPlace) {
+      setDistanceError("");
+      setCheckingRange(false);
+      return;
+    }
+
+    let cancelled = false;
+    setCheckingRange(true);
+    setDistanceError("");
+    void estimateFare({
+      pickupLat: pickupPlace.lat,
+      pickupLng: pickupPlace.lng,
+      dropoffLat: dropoffPlace.lat,
+      dropoffLng: dropoffPlace.lng,
+    })
+      .then(() => {
+        if (!cancelled) setDistanceError("");
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        if (
+          err instanceof ApiError &&
+          (err.code === "DISTANCE_EXCEEDS_MAX" || err.code === "OUTSIDE_SERVICE_AREA")
+        ) {
+          setDistanceError(err.message);
+          return;
+        }
+        setDistanceError("");
+      })
+      .finally(() => {
+        if (!cancelled) setCheckingRange(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [pickupPlace, dropoffPlace]);
 
   useEffect(() => {
@@ -116,6 +160,8 @@ export function BookingSheet({
       window.clearTimeout(t);
     };
   }, [typed, step]);
+
+  const sending = customerRole === "sender";
 
   function startBooking() {
     setStep("locations");
@@ -227,9 +273,12 @@ export function BookingSheet({
     setPickupPlace(null);
     setDropoffPlace(null);
     setNotes("");
-    setReceiverName("");
-    setReceiverPhone("");
+    setCustomerRole("sender");
+    setContactName("");
+    setContactPhone("");
     setError("");
+    setDistanceError("");
+    setCheckingRange(false);
   }
 
   async function findRider() {
@@ -241,15 +290,18 @@ export function BookingSheet({
     setError("");
     primePushPermission();
     void activatePush("customer");
+    const meName = user?.name?.trim() || "Customer";
+    const mePhone = user?.phone ?? "";
     try {
       const trip = await createTrip.mutateAsync({
         pickup: pickupPlace.name,
         dropoff: dropoffPlace.name,
         notes,
-        senderName: user?.name?.trim() || "Customer",
-        senderPhone: user?.phone ?? "",
-        receiverName: receiverName.trim(),
-        receiverPhone: receiverPhone.trim(),
+        customerRole,
+        senderName: sending ? meName : contactName.trim(),
+        senderPhone: sending ? mePhone : contactPhone.trim(),
+        receiverName: sending ? contactName.trim() : meName,
+        receiverPhone: sending ? contactPhone.trim() : mePhone,
         pickupLat: pickupPlace.lat,
         pickupLng: pickupPlace.lng,
         dropoffLat: dropoffPlace.lat,
@@ -257,6 +309,12 @@ export function BookingSheet({
       });
       router.push(`/trips/${trip.id}`);
     } catch (err) {
+      if (err instanceof ApiError && err.code === "DISTANCE_EXCEEDS_MAX") {
+        setDistanceError(err.message);
+        setStep("locations");
+        setSnap(MID);
+        return;
+      }
       setError(err instanceof Error ? err.message : "Could not create request");
     }
   }
@@ -407,10 +465,22 @@ export function BookingSheet({
                 </span>
               </button>
             </div>
+            {checkingRange && pickup && dropoff ? (
+              <p className="mt-3 text-[13px] text-[#8A8780]">Checking delivery range…</p>
+            ) : null}
+            {distanceError ? (
+              <p className="mt-3 text-[13px] font-medium text-danger">{distanceError}</p>
+            ) : null}
             <Button
               className="mt-5 w-full"
-              disabled={!pickup.trim() || !dropoff.trim()}
+              disabled={
+                !pickup.trim() ||
+                !dropoff.trim() ||
+                checkingRange ||
+                Boolean(distanceError)
+              }
               onClick={() => {
+                if (checkingRange || distanceError) return;
                 setStep("details");
                 setSnap(TALL);
               }}
@@ -541,8 +611,33 @@ export function BookingSheet({
               Package details
             </h2>
             <p className="mt-1 text-[13px] text-[#8A8780]">
-              What’s going, and who the rider should call at drop-off.
+              {sending
+                ? "What’s going, and who the rider should call at drop-off."
+                : "What’s going, and who the rider should collect from."}
             </p>
+
+            <div className="mt-4 grid grid-cols-2 gap-1.5 rounded-2xl bg-[#EEEDE8] p-1">
+              <button
+                type="button"
+                className={cn(
+                  "rounded-[14px] px-3 py-2.5 text-[13px] font-semibold",
+                  sending ? "bg-[#FAFAF7] text-[#1A1A16]" : "text-[#8A8780]",
+                )}
+                onClick={() => setCustomerRole("sender")}
+              >
+                I’m sending
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "rounded-[14px] px-3 py-2.5 text-[13px] font-semibold",
+                  sending ? "text-[#8A8780]" : "bg-[#FAFAF7] text-[#1A1A16]",
+                )}
+                onClick={() => setCustomerRole("receiver")}
+              >
+                I’m receiving
+              </button>
+            </div>
 
             <label className="mt-5 block">
               <span className="text-[13px] font-medium text-[#8A8780]">What’s moving</span>
@@ -561,16 +656,18 @@ export function BookingSheet({
                 </span>
                 <div>
                   <p className="font-display text-[15px] font-semibold tracking-[-0.02em]">
-                    Receiver
+                    {sending ? "Receiver" : "Sender"}
                   </p>
-                  <p className="text-[12px] text-[#8A8780]">Name and phone at drop-off</p>
+                  <p className="text-[12px] text-[#8A8780]">
+                    {sending ? "Name and phone at drop-off" : "Name and phone at pickup"}
+                  </p>
                 </div>
               </div>
               <input
                 className="mt-3.5 h-12 w-full rounded-2xl bg-[#FAFAF7] px-4 text-[15px] outline-none placeholder:text-[#8A8780]"
                 placeholder="Name"
-                value={receiverName}
-                onChange={(e) => setReceiverName(e.target.value)}
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
                 autoComplete="name"
               />
               <input
@@ -578,8 +675,8 @@ export function BookingSheet({
                 placeholder="Phone number"
                 inputMode="tel"
                 autoComplete="tel"
-                value={receiverPhone}
-                onChange={(e) => setReceiverPhone(e.target.value)}
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
               />
             </div>
 
@@ -593,8 +690,12 @@ export function BookingSheet({
                   setError("Tell us what we’re moving");
                   return;
                 }
-                if (receiverName.trim().length < 2 || receiverPhone.trim().length < 7) {
-                  setError("Add the receiver name and phone");
+                if (contactName.trim().length < 2 || contactPhone.trim().length < 7) {
+                  setError(
+                    sending
+                      ? "Add the receiver name and phone"
+                      : "Add the sender name and phone",
+                  );
                   return;
                 }
                 setError("");

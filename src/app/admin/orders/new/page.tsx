@@ -5,16 +5,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ApiError } from "@/lib/api/client";
 import {
   autocompletePlaces,
   placeDetails,
   type GooglePlaceSuggestion,
 } from "@/lib/api/places";
+import { estimateFare } from "@/lib/api/requests";
 import { quoteFee } from "@/lib/fare";
 import { formatNaira } from "@/lib/format";
 import { type Place } from "@/lib/places";
 import { useAdminRiders, useCreateAdminOrderMutation } from "@/lib/query/hooks";
-import { YABA_FLAT_FEE_NGN } from "@/types/request";
+import { YABA_FLAT_FEE_NGN, type CustomerRole } from "@/types/request";
 
 const inputClass =
   "h-10 w-full rounded-lg bg-[#FAFAF7] px-3 text-[14px] ring-1 ring-black/8 outline-none placeholder:text-[#8A8780]";
@@ -30,25 +32,69 @@ export default function AdminCreateOrderPage() {
   const [pickup, setPickup] = useState<Place | null>(null);
   const [dropoff, setDropoff] = useState<Place | null>(null);
   const [notes, setNotes] = useState("");
-  const [receiverName, setReceiverName] = useState("");
-  const [receiverPhone, setReceiverPhone] = useState("");
+  const [customerRole, setCustomerRole] = useState<CustomerRole>("sender");
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [riderId, setRiderId] = useState("");
   const [error, setError] = useState("");
+  const [distanceError, setDistanceError] = useState("");
+  const [checkingRange, setCheckingRange] = useState(false);
 
   const fee = useMemo(() => {
-    if (!pickup || !dropoff) return 0;
+    if (!pickup || !dropoff || distanceError) return 0;
     return quoteFee({
       pickupLat: pickup.lat,
       pickupLng: pickup.lng,
       dropoffLat: dropoff.lat,
       dropoffLng: dropoff.lng,
     });
+  }, [pickup, dropoff, distanceError]);
+
+  useEffect(() => {
+    if (!pickup || !dropoff) {
+      setDistanceError("");
+      setCheckingRange(false);
+      return;
+    }
+    let cancelled = false;
+    setCheckingRange(true);
+    setDistanceError("");
+    void estimateFare({
+      pickupLat: pickup.lat,
+      pickupLng: pickup.lng,
+      dropoffLat: dropoff.lat,
+      dropoffLng: dropoff.lng,
+    })
+      .then(() => {
+        if (!cancelled) setDistanceError("");
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        if (
+          err instanceof ApiError &&
+          (err.code === "DISTANCE_EXCEEDS_MAX" || err.code === "OUTSIDE_SERVICE_AREA")
+        ) {
+          setDistanceError(err.message);
+          return;
+        }
+        setDistanceError("");
+      })
+      .finally(() => {
+        if (!cancelled) setCheckingRange(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [pickup, dropoff]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!pickup || !dropoff) {
       setError("Pick a Yaba pickup and drop-off from search.");
+      return;
+    }
+    if (distanceError) {
+      setError(distanceError);
       return;
     }
     if (!fee) {
@@ -67,8 +113,11 @@ export default function AdminCreateOrderPage() {
         pickupLng: pickup.lng,
         dropoffLat: dropoff.lat,
         dropoffLng: dropoff.lng,
-        receiverName: receiverName.trim(),
-        receiverPhone: receiverPhone.trim(),
+        customerRole,
+        senderName: customerRole === "receiver" ? contactName.trim() : undefined,
+        senderPhone: customerRole === "receiver" ? contactPhone.trim() : undefined,
+        receiverName: customerRole === "sender" ? contactName.trim() : undefined,
+        receiverPhone: customerRole === "sender" ? contactPhone.trim() : undefined,
         riderId: riderId || undefined,
       });
       router.push(`/admin/orders/${trip.id}`);
@@ -115,6 +164,26 @@ export default function AdminCreateOrderPage() {
             onChange={(e) => setCustomerPhone(e.target.value)}
             required
           />
+          <div className="mt-3 grid grid-cols-2 gap-1.5 rounded-lg bg-[#FAFAF7] p-1 ring-1 ring-black/8">
+            <button
+              type="button"
+              className={`rounded-md px-3 py-2 text-[13px] font-semibold ${
+                customerRole === "sender" ? "bg-white text-[#1A1A16]" : "text-[#8A8780]"
+              }`}
+              onClick={() => setCustomerRole("sender")}
+            >
+              Customer is sending
+            </button>
+            <button
+              type="button"
+              className={`rounded-md px-3 py-2 text-[13px] font-semibold ${
+                customerRole === "receiver" ? "bg-white text-[#1A1A16]" : "text-[#8A8780]"
+              }`}
+              onClick={() => setCustomerRole("receiver")}
+            >
+              Customer is receiving
+            </button>
+          </div>
         </fieldset>
 
         <fieldset>
@@ -142,21 +211,26 @@ export default function AdminCreateOrderPage() {
 
         <fieldset>
           <legend className="text-[11px] font-semibold tracking-[0.07em] text-[#8A8780] uppercase">
-            Receiver
+            {customerRole === "sender" ? "Receiver" : "Sender"}
           </legend>
+          <p className="mt-1 text-[12px] text-[#8A8780]">
+            {customerRole === "sender"
+              ? "Who the rider should call at drop-off."
+              : "Who the rider should collect from."}
+          </p>
           <input
             className={`${inputClass} mt-2`}
             placeholder="Name"
-            value={receiverName}
-            onChange={(e) => setReceiverName(e.target.value)}
+            value={contactName}
+            onChange={(e) => setContactName(e.target.value)}
             required
           />
           <input
             className={`${inputClass} mt-2`}
             placeholder="Phone"
             inputMode="tel"
-            value={receiverPhone}
-            onChange={(e) => setReceiverPhone(e.target.value)}
+            value={contactPhone}
+            onChange={(e) => setContactPhone(e.target.value)}
             required
           />
         </fieldset>
@@ -179,7 +253,7 @@ export default function AdminCreateOrderPage() {
           </select>
         </fieldset>
 
-        {pickup && dropoff ? (
+        {pickup && dropoff && !distanceError ? (
           <p className="text-[14px]">
             Fare{" "}
             <span className="num font-semibold text-accent">
@@ -188,9 +262,23 @@ export default function AdminCreateOrderPage() {
           </p>
         ) : null}
 
-        {error ? <p className="text-[13px] font-medium text-danger">{error}</p> : null}
+        {checkingRange && pickup && dropoff ? (
+          <p className="text-[13px] text-[#8A8780]">Checking delivery range…</p>
+        ) : null}
+        {distanceError ? (
+          <p className="text-[13px] font-medium text-danger">{distanceError}</p>
+        ) : null}
 
-        <Button type="submit" size="md" className="w-full" disabled={createOrder.isPending}>
+        {error && error !== distanceError ? (
+          <p className="text-[13px] font-medium text-danger">{error}</p>
+        ) : null}
+
+        <Button
+          type="submit"
+          size="md"
+          className="w-full"
+          disabled={createOrder.isPending || checkingRange || Boolean(distanceError)}
+        >
           {createOrder.isPending ? "Creating…" : "Create order"}
         </Button>
       </form>

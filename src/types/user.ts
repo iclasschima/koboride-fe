@@ -4,6 +4,7 @@ export type User = {
   id: string;
   phone: string;
   name: string | null;
+  isRider?: boolean;
 };
 
 export type UserRole = "customer" | "rider" | "admin";

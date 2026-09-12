@@ -14,6 +14,7 @@ import {
   signIn,
   updateProfile,
 } from "@/lib/api/auth";
+import { api, setSession } from "@/lib/api/client";
 import type { User } from "@/types/user";
 
 type AuthMode = "login" | "profile" | null;
@@ -39,13 +40,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authOpen, setAuthOpen] = useState<AuthMode>(null);
 
   useEffect(() => {
-    try {
-      const session = getStoredSession();
-      setUser(session.user);
-      setToken(session.token);
-    } finally {
-      setReady(true);
-    }
+    const session = getStoredSession();
+    setUser(session.user);
+    setToken(session.token);
+    setReady(true);
+    if (!session.token) return;
+    void api
+      .get<{ user: User }>("/api/auth/me")
+      .then((data) => {
+        setUser(data.user);
+        setSession(session.token, data.user);
+      })
+      .catch(() => {
+        /* keep the stored session */
+      });
   }, []);
 
   const openAuth = useCallback((mode: AuthMode = "login") => {
@@ -58,8 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const next = await signIn(phone);
     setUser(next);
     setToken(getStoredSession().token);
-    if (!next.name) setAuthOpen("profile");
-    else setAuthOpen(null);
+    if (next.isRider || next.name) setAuthOpen(null);
+    else setAuthOpen("profile");
     return next;
   }, []);
 

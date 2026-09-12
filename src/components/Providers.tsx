@@ -8,6 +8,7 @@ import { MobileShell } from "@/components/layout/MobileShell";
 import { AutoActivatePush } from "@/components/notify/AutoActivatePush";
 import { OrderNotifications } from "@/components/notify/OrderNotifications";
 import { PushBanner } from "@/components/notify/PushBanner";
+import { RiderAutoSwitch } from "@/components/layout/RiderAutoSwitch";
 import { PwaInstallProvider } from "@/components/pwa/PwaInstallProvider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -17,6 +18,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <RiderAuthProvider>
           <PwaInstallProvider>
             <MobileShell>{children}</MobileShell>
+            <RiderAutoSwitch />
             <AutoActivatePush />
             <PushBanner />
             <OrderNotifications />

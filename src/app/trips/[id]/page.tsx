@@ -182,7 +182,12 @@ export default function TripDetailPage() {
                 <span className="num font-semibold">{formatNaira(trip.feeNgn)}</span>{" "}
                 cash to the rider
               </p>
-              {trip.receiverName ? (
+              {trip.customerRole === "receiver" && trip.senderName ? (
+                <p className="mt-2 text-[13px] text-[#8A8780]">
+                  Coming from {trip.senderName}
+                  {trip.senderPhone ? ` · ${trip.senderPhone}` : ""}
+                </p>
+              ) : trip.receiverName ? (
                 <p className="mt-2 text-[13px] text-[#8A8780]">
                   Delivering to {trip.receiverName}
                   {trip.receiverPhone ? ` · ${trip.receiverPhone}` : ""}

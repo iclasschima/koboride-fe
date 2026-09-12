@@ -46,10 +46,11 @@ export async function createAdminOrder(input: {
   pickupLng: number;
   dropoffLat: number;
   dropoffLng: number;
+  customerRole?: "sender" | "receiver";
   senderName?: string;
   senderPhone?: string;
-  receiverName: string;
-  receiverPhone: string;
+  receiverName?: string;
+  receiverPhone?: string;
   riderId?: string;
 }): Promise<Trip> {
   const data = await api.post<{ trip: Trip }>("/api/admin/orders", input, admin);

@@ -4,8 +4,8 @@ import { usePathname } from "next/navigation";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { RiderNav } from "@/components/layout/RiderNav";
 import { AddToHomeScreenBanner } from "@/components/pwa/AddToHomeScreen";
+import { PullToRefresh } from "@/components/ui/PullToRefresh";
 import { useRiderAuth } from "@/lib/auth/RiderAuthProvider";
-import { cn } from "@/lib/cn";
 
 export function MobileShell({ children }: { children: React.ReactNode }) {
   const { authenticated: riderAuthenticated } = useRiderAuth();
@@ -39,15 +39,15 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="kb-phone relative mx-auto flex w-full max-w-md flex-col overflow-hidden bg-[#FAFAF7] shadow-[0_0_80px_rgba(15,61,46,0.35)]">
-      <div
-        className={cn(
-          "relative min-h-0 flex-1",
-          mapChrome ? "overflow-hidden" : "overflow-y-auto",
-        )}
-      >
-        {children}
-      </div>
+    <div
+      data-ptr-root
+      className="kb-phone relative mx-auto flex w-full max-w-md flex-col overflow-hidden bg-[#FAFAF7] shadow-[0_0_80px_rgba(15,61,46,0.35)]"
+    >
+      {mapChrome ? (
+        <div className="relative min-h-0 flex-1 overflow-hidden">{children}</div>
+      ) : (
+        <PullToRefresh className="relative min-h-0 flex-1">{children}</PullToRefresh>
+      )}
       {(showCustomerNav || showRiderNav) && !mapChrome ? (
         <AddToHomeScreenBanner />
       ) : null}
