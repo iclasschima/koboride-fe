@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/Button";
 import { WhatsAppSupport } from "@/components/support/WhatsAppSupport";
 import { EnableNotifications } from "@/components/notify/EnableNotifications";
 import { AddToHomeScreenCard } from "@/components/pwa/AddToHomeScreen";
-import { RiderEntryLink } from "@/components/layout/AppRoleSwitch";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useOpenOps } from "@/lib/open-ops";
 
@@ -63,7 +62,6 @@ export default function ProfilePage() {
         <Button className="mt-5" onClick={() => openAuth("login")}>
           Sign in
         </Button>
-        <RiderEntryLink />
         <WhatsAppSupport className="mt-8 text-left" />
       </div>
     );
@@ -137,8 +135,6 @@ export default function ProfilePage() {
       <AddToHomeScreenCard />
 
       <WhatsAppSupport className="mt-6" />
-
-      <RiderEntryLink />
 
       <Button
         className="mt-3 w-full"
