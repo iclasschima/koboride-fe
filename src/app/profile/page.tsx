@@ -42,6 +42,15 @@ export default function ProfilePage() {
   if (!authenticated) {
     return (
       <div className="flex flex-col items-center bg-[#FAFAF7] px-6 pt-16 text-center">
+        <button
+          type="button"
+          className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand font-display text-[22px] font-bold text-[#FAFAF7]"
+          onClick={openOps}
+          aria-hidden
+          tabIndex={-1}
+        >
+          K
+        </button>
         <h1
           className="font-display text-[22px] font-bold tracking-[-0.03em] text-[#1A1A16]"
           onClick={openOps}
