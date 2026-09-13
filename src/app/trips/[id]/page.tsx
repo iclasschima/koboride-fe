@@ -9,6 +9,7 @@ import { AppSheet } from "@/components/ui/AppSheet";
 import { Button } from "@/components/ui/Button";
 import { StatusStepper } from "@/components/ui/StatusStepper";
 import { NotifyPrompt } from "@/components/notify/NotifyPrompt";
+import { ReportOrderButton } from "@/components/support/WhatsAppSupport";
 import { formatNaira, formatCountdown } from "@/lib/format";
 import {
   useAutoAssignMutation,
@@ -16,7 +17,8 @@ import {
   useConfirmCompletionMutation,
   useTrip,
 } from "@/lib/query/hooks";
-import { tripHeadline } from "@/types/request";
+import { canCustomerCancel, tripHeadline } from "@/types/request";
+import { ApiError } from "@/lib/api/client";
 
 const SEARCH_MS = 4_000;
 
@@ -36,6 +38,8 @@ export default function TripDetailPage() {
 
   const [snap, setSnap] = useState<number | string | null>(PEEK);
   const [autoConfirmLeft, setAutoConfirmLeft] = useState<number | null>(null);
+  const [askCancel, setAskCancel] = useState(false);
+  const [cancelError, setCancelError] = useState("");
 
   useEffect(() => {
     if (trip?.riderPhase === "delivered" || trip?.status === "completed") {
@@ -101,6 +105,20 @@ export default function TripDetailPage() {
   const delivered = trip.status === "in_progress" && trip.riderPhase === "delivered";
   const assigned = trip.status === "in_progress";
   const searching = trip.status === "dispatching";
+  const showCancel = canCustomerCancel(trip);
+
+  async function handleCancel() {
+    setCancelError("");
+    try {
+      await cancelOrder.mutateAsync(trip.id);
+      router.push("/");
+    } catch (err) {
+      setAskCancel(false);
+      setCancelError(
+        err instanceof ApiError ? err.message : "Could not cancel this order",
+      );
+    }
+  }
   const mapMode: MapMode =
     searching ? "searching" : trip.pickup && trip.dropoff ? "route" : "idle";
   const initial = (trip.riderName ?? "R").trim().charAt(0).toUpperCase();
@@ -122,11 +140,12 @@ export default function TripDetailPage() {
         >
           <ChevronLeft className="h-5 w-5" strokeWidth={2.2} />
         </Link>
-        <div className="min-w-0 rounded-full bg-[#FAFAF7]/95 px-3 py-2 shadow-[0_8px_24px_rgba(15,61,46,0.12)]">
+        <div className="min-w-0 flex-1 rounded-full bg-[#FAFAF7]/95 px-3 py-2 shadow-[0_8px_24px_rgba(15,61,46,0.12)]">
           <h1 className="truncate font-display text-[14px] font-semibold tracking-[-0.02em]">
             {tripHeadline(trip)}
           </h1>
         </div>
+        <ReportOrderButton orderId={trip.id} />
       </header>
 
       <AppSheet
@@ -203,16 +222,49 @@ export default function TripDetailPage() {
           ) : null}
 
           <div className="pt-5">
-            {searching ? (
-              <button
-                type="button"
-                className="w-full text-center text-[14px] font-medium text-[#8A8780]"
-                onClick={() =>
-                  void cancelOrder.mutateAsync(trip.id).then(() => router.push("/"))
-                }
-              >
-                Cancel
-              </button>
+            {showCancel ? (
+              <div>
+                {askCancel ? (
+                  <div className="space-y-3">
+                    <p className="text-center text-[13px] text-[#8A8780]">
+                      {assigned
+                        ? "The rider is already on the way. Cancel this pickup?"
+                        : "Cancel this request?"}
+                    </p>
+                    <Button
+                      className="w-full"
+                      disabled={cancelOrder.isPending}
+                      onClick={() => void handleCancel()}
+                    >
+                      {cancelOrder.isPending ? "Cancelling…" : "Yes, cancel"}
+                    </Button>
+                    <button
+                      type="button"
+                      className="w-full text-center text-[14px] font-medium text-[#8A8780]"
+                      disabled={cancelOrder.isPending}
+                      onClick={() => setAskCancel(false)}
+                    >
+                      Keep waiting
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="w-full text-center text-[14px] font-medium text-[#8A8780]"
+                    onClick={() => {
+                      setCancelError("");
+                      setAskCancel(true);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                )}
+                {cancelError ? (
+                  <p className="mt-3 text-center text-[13px] text-[#B42318]">
+                    {cancelError}
+                  </p>
+                ) : null}
+              </div>
             ) : null}
 
             {delivered ? (

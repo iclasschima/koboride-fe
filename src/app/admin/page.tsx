@@ -4,7 +4,7 @@ import Link from "next/link";
 import { KpiCard } from "@/components/admin/KpiCard";
 import { OrdersTable } from "@/components/admin/OrdersTable";
 import { EnableNotifications } from "@/components/notify/EnableNotifications";
-import { formatNaira } from "@/lib/format";
+import { formatKm } from "@/lib/format";
 import { useAdminTrips, useAdminRiders } from "@/lib/query/hooks";
 
 export default function AdminOverviewPage() {
@@ -18,9 +18,9 @@ export default function AdminOverviewPage() {
   const completedToday = trips.filter(
     (t) => t.status === "completed" && isToday(t.updatedAt),
   );
-  const pendingPayout = trips
-    .filter((t) => t.status === "completed" && !t.payoutPaid)
-    .reduce((sum, t) => sum + t.payoutNgn, 0);
+  const completed = trips.filter((t) => t.status === "completed");
+  const distanceCovered = completed.reduce((sum, t) => sum + (t.distanceKm ?? 0), 0);
+  const distanceToday = completedToday.reduce((sum, t) => sum + (t.distanceKm ?? 0), 0);
   const approvedRiders = riders.filter((u) => u.approved);
 
   return (
@@ -50,16 +50,9 @@ export default function AdminOverviewPage() {
         </div>
       </div>
 
-      <section className="mt-6 rounded-xl border border-black/6 bg-white px-4 py-3">
-        <h2 className="font-display text-[16px] font-semibold">Alerts</h2>
-        <p className="mt-1 text-[13px] text-[#8A8780]">
-          Get a push when a customer signs up, a new order lands, or an order
-          status changes.
-        </p>
-        <EnableNotifications role="admin" />
-      </section>
+      <EnableNotifications role="admin" framed />
 
-      <div className="mt-6 grid grid-cols-2 gap-3 xl:grid-cols-5">
+      <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-3">
         <KpiCard
           label="Live orders"
           value={isPending ? "—" : String(live.length)}
@@ -68,11 +61,7 @@ export default function AdminOverviewPage() {
         <KpiCard
           label="Completed today"
           value={isPending ? "—" : String(completedToday.length)}
-        />
-        <KpiCard
-          label="Unpaid payouts"
-          value={isPending ? "—" : formatNaira(pendingPayout)}
-          tone="amber"
+          hint={`${completed.length} completed in total`}
         />
         <KpiCard
           label="Cancelled"
@@ -82,6 +71,11 @@ export default function AdminOverviewPage() {
         <KpiCard
           label="Approved riders"
           value={isPending ? "—" : String(approvedRiders.length)}
+        />
+        <KpiCard
+          label="Distance covered"
+          value={isPending ? "—" : formatKm(distanceCovered)}
+          hint={`${formatKm(distanceToday)} completed today`}
         />
       </div>
 

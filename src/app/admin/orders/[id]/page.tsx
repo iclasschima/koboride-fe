@@ -7,7 +7,7 @@ import { ChevronLeft } from "lucide-react";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { StatusStepper } from "@/components/ui/StatusStepper";
 import { Button } from "@/components/ui/Button";
-import { formatDateTime, formatNaira, shortId } from "@/lib/format";
+import { formatDateTime, formatKm, formatNaira, shortId } from "@/lib/format";
 import {
   useAdminTrip,
   useAdminRiders,
@@ -95,6 +95,12 @@ export default function AdminOrderDetailPage() {
           </h2>
           <p className="mt-3 text-[15px] font-semibold">{trip.pickup}</p>
           <p className="mt-1 text-[15px] font-semibold">→ {trip.dropoff}</p>
+          <p className="mt-3 text-[14px] text-[#8A8780]">
+            Distance covered{" "}
+            <span className="num font-semibold text-[#1A1A16]">
+              {formatKm(trip.distanceKm ?? 0)}
+            </span>
+          </p>
           {trip.notes ? <p className="mt-3 text-[14px]">{trip.notes}</p> : null}
         </section>
         <section className="rounded-xl border border-black/6 bg-white p-5">

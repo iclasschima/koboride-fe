@@ -533,22 +533,22 @@ export function BookingSheet({
               ) : null}
               {showQuick
                 ? SEARCH_PLACES.map((place) => (
-                    <li key={place.name}>
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-3 py-3 text-left"
-                        onClick={() => pickQuick(place)}
-                      >
-                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#EEEDE8] text-brand">
-                          <Star className="h-4 w-4" />
-                        </span>
-                        <span>
-                          <span className="block text-[15px] font-semibold">{place.name}</span>
-                          <span className="block text-[13px] text-[#8A8780]">{place.area}</span>
-                        </span>
-                      </button>
-                    </li>
-                  ))
+                  <li key={place.name}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-3 py-3 text-left"
+                      onClick={() => pickQuick(place)}
+                    >
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#EEEDE8] text-brand">
+                        <Star className="h-4 w-4" />
+                      </span>
+                      <span>
+                        <span className="block text-[15px] font-semibold">{place.name}</span>
+                        <span className="block text-[13px] text-[#8A8780]">{place.area}</span>
+                      </span>
+                    </button>
+                  </li>
+                ))
                 : null}
               {showQuick ? (
                 <li className="py-3">
@@ -577,29 +577,29 @@ export function BookingSheet({
               ) : null}
               {!showQuick
                 ? googleHits.map((place) => (
-                    <li key={place.id}>
-                      <button
-                        type="button"
-                        disabled={resolvingId !== null}
-                        className="flex w-full items-center gap-3 py-3 text-left disabled:opacity-50"
-                        onClick={() => void pickGoogle(place)}
-                      >
-                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#EEEDE8] text-brand">
-                          <MapPin className="h-4 w-4" />
+                  <li key={place.id}>
+                    <button
+                      type="button"
+                      disabled={resolvingId !== null}
+                      className="flex w-full items-center gap-3 py-3 text-left disabled:opacity-50"
+                      onClick={() => void pickGoogle(place)}
+                    >
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#EEEDE8] text-brand">
+                        <MapPin className="h-4 w-4" />
+                      </span>
+                      <span>
+                        <span className="block text-[15px] leading-snug font-semibold">
+                          {place.name}
                         </span>
-                        <span>
-                          <span className="block text-[15px] leading-snug font-semibold">
-                            {place.name}
-                          </span>
-                          {resolvingId === place.id ? (
-                            <span className="block text-[13px] text-[#8A8780]">Loading…</span>
-                          ) : place.area ? (
-                            <span className="block text-[13px] text-[#8A8780]">{place.area}</span>
-                          ) : null}
-                        </span>
-                      </button>
-                    </li>
-                  ))
+                        {resolvingId === place.id ? (
+                          <span className="block text-[13px] text-[#8A8780]">Loading…</span>
+                        ) : place.area ? (
+                          <span className="block text-[13px] text-[#8A8780]">{place.area}</span>
+                        ) : null}
+                      </span>
+                    </button>
+                  </li>
+                ))
                 : null}
             </ul>
           </div>

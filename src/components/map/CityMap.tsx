@@ -162,12 +162,12 @@ export function CityMap({
 
         {showBikes
           ? NEARBY_BIKES.map((r) => (
-              <g key={`${r.x}-${r.y}`} transform={`translate(${r.x} ${r.y})`}>
-                <g className="kb-bike-mark">
-                  <BikeMark heading={r.heading} />
-                </g>
+            <g key={`${r.x}-${r.y}`} transform={`translate(${r.x} ${r.y})`}>
+              <g className="kb-bike-mark">
+                <BikeMark heading={r.heading} />
               </g>
-            ))
+            </g>
+          ))
           : null}
 
         {showRoute ? (

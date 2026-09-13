@@ -33,6 +33,7 @@ export type Trip = {
   customerPhone: string | null;
   payoutNgn: number;
   payoutPaid: boolean;
+  distanceKm: number;
   createdAt: string;
   updatedAt: string;
   autoConfirmInMs: number | null;
@@ -77,6 +78,14 @@ export const RIDER_PHASES: RiderPhase[] = [
 
 export const YABA_FLAT_FEE_NGN = 1000;
 
+/** Customer can cancel until the rider has the package. */
+export function canCustomerCancel(trip: Trip): boolean {
+  if (trip.status === "dispatching") return true;
+  if (trip.status !== "in_progress") return false;
+  const phase = trip.riderPhase;
+  return !phase || phase === "accepted" || phase === "en_route_pickup";
+}
+
 export function isActiveTrip(trip: Trip): boolean {
   return trip.status === "dispatching" || trip.status === "in_progress";
 }
@@ -84,10 +93,16 @@ export function isActiveTrip(trip: Trip): boolean {
 export function tripHeadline(trip: Trip): string {
   if (trip.status === "dispatching") return "Searching for a rider";
   if (trip.status === "in_progress" && trip.riderPhase) {
-    if (trip.riderPhase === "accepted" || trip.riderPhase === "en_route_pickup") {
+    if (
+      trip.riderPhase === "accepted" ||
+      trip.riderPhase === "en_route_pickup"
+    ) {
       return "Rider accepted";
     }
-    if (trip.riderPhase === "collected" || trip.riderPhase === "en_route_dropoff") {
+    if (
+      trip.riderPhase === "collected" ||
+      trip.riderPhase === "en_route_dropoff"
+    ) {
       return "Picked up";
     }
     if (trip.riderPhase === "delivered") return "Delivered";

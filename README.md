@@ -9,6 +9,8 @@ npm run dev
 
 API: `http://localhost:3001` (koboride-be). Sign in with a phone number.
 
+Shared staging is the **`develop`** branch on both repos. Production is **`main`**. See [CONTRIBUTING.md](./CONTRIBUTING.md).
+
 Customers book at `/`. Riders sign in at `/rider` and accept waiting jobs. Ops signs in at `/admin`.
 
 Web Push: set `NEXT_PUBLIC_VAPID_PUBLIC_KEY` to the same public key as the API (`VAPID_PUBLIC_KEY`). Customers and riders enable it from Account / Profile. Add to Home Screen is offered in the app (required for iPhone alerts). Polling is unchanged.

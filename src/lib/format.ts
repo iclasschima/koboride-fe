@@ -1,3 +1,9 @@
+export function formatKm(km: number): string {
+  const rounded = Math.round(km * 10) / 10;
+  if (!Number.isFinite(rounded) || rounded <= 0) return "0 km";
+  return Number.isInteger(rounded) ? `${rounded} km` : `${rounded.toFixed(1)} km`;
+}
+
 export function formatNaira(amount: number): string {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",

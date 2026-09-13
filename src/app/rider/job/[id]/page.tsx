@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft, Navigation, Phone } from "lucide-react";
 import { CityMap } from "@/components/map/CityMap";
+import { ReportOrderButton } from "@/components/support/WhatsAppSupport";
 import { Button } from "@/components/ui/Button";
 import { StatusStepper } from "@/components/ui/StatusStepper";
 import { useAdvanceRiderMutation, useRiderTrip } from "@/lib/query/hooks";
@@ -58,7 +59,9 @@ export default function RiderJobPage() {
   if (trip.status !== "in_progress") {
     return (
       <div className="px-4 pt-16 text-center">
-        <p className="font-display text-[20px] font-semibold">This job is closed</p>
+        <p className="font-display text-[20px] font-semibold">
+          {trip.status === "cancelled" ? "This order was cancelled" : "This job is closed"}
+        </p>
         <Link href="/rider" className="mt-3 inline-block text-brand">
           Home
         </Link>
@@ -104,6 +107,10 @@ export default function RiderJobPage() {
         >
           <ChevronLeft className="h-5 w-5" />
         </Link>
+        <ReportOrderButton
+          orderId={trip.id}
+          className="absolute top-[max(0.75rem,env(safe-area-inset-top))] right-3 z-10"
+        />
       </div>
 
       <div className="relative z-10 -mt-5 flex flex-1 flex-col rounded-t-[28px] bg-[#FAFAF7] px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">

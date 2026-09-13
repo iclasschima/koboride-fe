@@ -1,5 +1,5 @@
 import { MessageCircle } from "lucide-react";
-import { SUPPORT_WHATSAPP_URL } from "@/lib/support";
+import { orderReportWhatsAppUrl, SUPPORT_WHATSAPP_URL } from "@/lib/support";
 import { cn } from "@/lib/cn";
 
 export function WhatsAppSupport({ className }: { className?: string }) {
@@ -24,6 +24,28 @@ export function WhatsAppSupport({ className }: { className?: string }) {
           Chat with us on WhatsApp
         </span>
       </span>
+    </a>
+  );
+}
+
+export function ReportOrderButton({
+  orderId,
+  className,
+}: {
+  orderId: string;
+  className?: string;
+}) {
+  return (
+    <a
+      href={orderReportWhatsAppUrl(orderId)}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        "inline-flex h-10 shrink-0 items-center rounded-full bg-[#FAFAF7] px-3.5 text-[13px] font-semibold text-[#1A1A16] shadow-[0_8px_24px_rgba(15,61,46,0.12)]",
+        className,
+      )}
+    >
+      Report
     </a>
   );
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { formatDateTime, formatNaira, shortId } from "@/lib/format";
+import { formatDateTime, formatKm, formatNaira, shortId } from "@/lib/format";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { StatusStepper } from "@/components/ui/StatusStepper";
 import { useDeleteAdminOrderMutation } from "@/lib/query/hooks";
@@ -68,7 +68,8 @@ export function OrdersTable({
                 </p>
               </div>
               <p className="mt-1 text-[12px] text-[#8A8780]">
-                {trip.riderName ?? "Unassigned"} · {formatDateTime(trip.createdAt)}
+                {trip.riderName ?? "Unassigned"} · {formatKm(trip.distanceKm ?? 0)} ·{" "}
+                {formatDateTime(trip.createdAt)}
               </p>
             </Link>
             <div className="mt-2 flex justify-end">
@@ -88,12 +89,13 @@ export function OrdersTable({
       </ul>
 
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[960px] text-left text-[13px]">
+        <table className="w-full min-w-[1080px] text-left text-[13px]">
           <thead className="border-b border-black/6 bg-[#FAFAF7] text-[11px] font-semibold tracking-[0.05em] text-[#8A8780] uppercase">
             <tr>
               <th className="px-4 py-3 font-semibold">Order</th>
               <th className="px-4 py-3 font-semibold">Customer</th>
               <th className="px-4 py-3 font-semibold">Route</th>
+              <th className="px-4 py-3 font-semibold">Distance</th>
               <th className="px-4 py-3 font-semibold">Rider</th>
               <th className="px-4 py-3 font-semibold">Status</th>
               <th className="px-4 py-3 font-semibold">Fare</th>
@@ -127,6 +129,9 @@ export function OrdersTable({
                 <td className="max-w-[220px] px-4 py-3 align-top">
                   <p className="truncate font-medium">{trip.pickup}</p>
                   <p className="truncate text-[12px] text-[#8A8780]">→ {trip.dropoff}</p>
+                </td>
+                <td className="px-4 py-3 align-top whitespace-nowrap">
+                  <p className="num font-medium">{formatKm(trip.distanceKm ?? 0)}</p>
                 </td>
                 <td className="px-4 py-3 align-top">
                   <p className="font-medium">{trip.riderName ?? "Unassigned"}</p>
