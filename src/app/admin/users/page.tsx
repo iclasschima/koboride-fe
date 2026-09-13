@@ -2,14 +2,17 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { ActiveToggle } from "@/components/admin/ActiveToggle";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { formatDate, formatDateTime, formatNaira } from "@/lib/format";
-import { useAdminCustomers } from "@/lib/query/hooks";
+import { useAdminCustomers, useSetCustomerActiveMutation } from "@/lib/query/hooks";
 
 export default function AdminUsersPage() {
   const { data: customers = [], isPending } = useAdminCustomers();
+  const setActive = useSetCustomerActiveMutation();
   const [query, setQuery] = useState("");
+  const [error, setError] = useState("");
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -25,8 +28,12 @@ export default function AdminUsersPage() {
         Users
       </h1>
       <p className="mt-1 text-[14px] text-[#8A8780]">
-        Everyone who has signed in on the customer app.
+        Everyone who has signed in on the customer app. Inactive users cannot
+        log in or book.
       </p>
+      {error ? (
+        <p className="mt-3 text-[13px] font-medium text-danger">{error}</p>
+      ) : null}
 
       <input
         value={query}
@@ -54,34 +61,58 @@ export default function AdminUsersPage() {
           <>
             <ul className="divide-y divide-black/5 md:hidden">
               {rows.map((user) => (
-                <li key={user.id}>
-                  <Link href={`/admin/users/${user.id}`} className="block px-4 py-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate font-display text-[15px] font-semibold">
-                          {user.name?.trim() || "No name"}
-                          {user.isRider ? (
-                            <span className="ml-2 inline-flex rounded-full bg-[#DCEEE4] px-2 py-0.5 align-middle text-[10px] font-semibold text-brand">
-                              Rider
-                            </span>
-                          ) : null}
-                        </p>
-                        <p className="mt-0.5 text-[13px] text-[#8A8780]">{user.phone}</p>
-                      </div>
-                      <p className="num shrink-0 text-[13px] font-semibold text-accent">
+                <li key={user.id} className="px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <Link href={`/admin/users/${user.id}`} className="min-w-0">
+                      <p className="truncate font-display text-[15px] font-semibold">
+                        {user.name?.trim() || "No name"}
+                        {user.isRider ? (
+                          <span className="ml-2 inline-flex rounded-full bg-[#DCEEE4] px-2 py-0.5 align-middle text-[10px] font-semibold text-brand">
+                            Rider
+                          </span>
+                        ) : null}
+                        {user.cancelLimited ? (
+                          <span className="ml-2 inline-flex rounded-full bg-[#F3E4D8] px-2 py-0.5 align-middle text-[10px] font-semibold text-[#8A4B1F]">
+                            Cancel limit
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="mt-0.5 text-[13px] text-[#8A8780]">{user.phone}</p>
+                    </Link>
+                    <div className="flex shrink-0 flex-col items-end gap-2">
+                      <p className="num text-[13px] font-semibold text-accent">
                         {formatNaira(user.spentNgn)}
                       </p>
+                      <ActiveToggle
+                        active={user.active}
+                        pending={setActive.isPending}
+                        onToggle={() => {
+                          setError("");
+                          void setActive
+                            .mutateAsync({
+                              customerId: user.id,
+                              active: !user.active,
+                            })
+                            .catch((err) =>
+                              setError(
+                                err instanceof Error
+                                  ? err.message
+                                  : "Could not update user",
+                              ),
+                            );
+                        }}
+                      />
                     </div>
-                    <div className="mt-2 flex items-center justify-between gap-3 text-[12px] text-[#8A8780]">
-                      <p>
-                        {user.ordersCount} {user.ordersCount === 1 ? "order" : "orders"} ·{" "}
-                        {formatDate(user.createdAt)}
-                      </p>
-                      {user.lastOrderAt && user.lastOrderStatus ? (
-                        <StatusBadge status={user.lastOrderStatus} />
-                      ) : null}
-                    </div>
-                  </Link>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-3 text-[12px] text-[#8A8780]">
+                    <p>
+                      {user.ordersCount} {user.ordersCount === 1 ? "order" : "orders"} ·{" "}
+                      {formatDate(user.createdAt)}
+                    </p>
+                    {user.lastOrderAt && user.lastOrderStatus ? (
+                      <StatusBadge status={user.lastOrderStatus} />
+                    ) : null}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -96,6 +127,7 @@ export default function AdminUsersPage() {
                     <th className="px-4 py-3 font-semibold">Orders</th>
                     <th className="px-4 py-3 font-semibold">Spent</th>
                     <th className="px-4 py-3 font-semibold">Last order</th>
+                    <th className="px-4 py-3 font-semibold">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -114,6 +146,11 @@ export default function AdminUsersPage() {
                         {user.isRider ? (
                           <span className="ml-2 inline-flex rounded-full bg-[#DCEEE4] px-2 py-0.5 text-[10px] font-semibold text-brand">
                             Rider
+                          </span>
+                        ) : null}
+                        {user.cancelLimited ? (
+                          <span className="ml-2 inline-flex rounded-full bg-[#F3E4D8] px-2 py-0.5 text-[10px] font-semibold text-[#8A4B1F]">
+                            Cancel limit
                           </span>
                         ) : null}
                       </td>
@@ -136,6 +173,27 @@ export default function AdminUsersPage() {
                         ) : (
                           <span className="text-[#8A8780]">—</span>
                         )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <ActiveToggle
+                          active={user.active}
+                          pending={setActive.isPending}
+                          onToggle={() => {
+                            setError("");
+                            void setActive
+                              .mutateAsync({
+                                customerId: user.id,
+                                active: !user.active,
+                              })
+                              .catch((err) =>
+                                setError(
+                                  err instanceof Error
+                                    ? err.message
+                                    : "Could not update user",
+                                ),
+                              );
+                          }}
+                        />
                       </td>
                     </tr>
                   ))}

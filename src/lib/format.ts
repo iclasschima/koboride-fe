@@ -33,6 +33,33 @@ export function formatDate(iso: string): string {
   }).format(new Date(iso));
 }
 
+export function tripDurationSeconds(trip: {
+  createdAt: string;
+  completedAt?: string | null;
+  durationSeconds?: number | null;
+}): number | null {
+  if (trip.durationSeconds != null) return trip.durationSeconds;
+  if (!trip.completedAt) return null;
+  return Math.max(
+    0,
+    Math.round(
+      (new Date(trip.completedAt).getTime() - new Date(trip.createdAt).getTime()) / 1000,
+    ),
+  );
+}
+
+export function formatDuration(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds));
+  if (s < 60) return s <= 1 ? "1 sec" : `${s} sec`;
+  const totalMinutes = Math.round(s / 60);
+  if (totalMinutes < 60) return totalMinutes === 1 ? "1 min" : `${totalMinutes} min`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const hourText = hours === 1 ? "1 hr" : `${hours} hr`;
+  if (minutes === 0) return hourText;
+  return `${hourText} ${minutes} min`;
+}
+
 export function formatCountdown(ms: number): string {
   const totalMinutes = Math.max(0, Math.round(ms / 60_000));
   if (totalMinutes < 1) return "less than a minute";

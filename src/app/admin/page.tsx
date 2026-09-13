@@ -1,27 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { KpiCard } from "@/components/admin/KpiCard";
 import { OrdersTable } from "@/components/admin/OrdersTable";
 import { EnableNotifications } from "@/components/notify/EnableNotifications";
-import { formatKm } from "@/lib/format";
-import { useAdminTrips, useAdminRiders } from "@/lib/query/hooks";
+import { useAdminTrips } from "@/lib/query/hooks";
 
 export default function AdminOverviewPage() {
   const { data: trips = [], isPending } = useAdminTrips();
-  const { data: riders = [] } = useAdminRiders();
-  const live = trips.filter(
-    (t) => t.status === "dispatching" || t.status === "in_progress",
-  );
-  const searching = trips.filter((t) => t.status === "dispatching");
-  const cancelled = trips.filter((t) => t.status === "cancelled");
-  const completedToday = trips.filter(
-    (t) => t.status === "completed" && isToday(t.updatedAt),
-  );
-  const completed = trips.filter((t) => t.status === "completed");
-  const distanceCovered = completed.reduce((sum, t) => sum + (t.distanceKm ?? 0), 0);
-  const distanceToday = completedToday.reduce((sum, t) => sum + (t.distanceKm ?? 0), 0);
-  const approvedRiders = riders.filter((u) => u.approved);
 
   return (
     <div>
@@ -34,7 +19,7 @@ export default function AdminOverviewPage() {
             Assign riders, watch status, mark bank transfers paid.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-start gap-3">
           <Link
             href="/admin/orders/new"
             className="inline-flex h-9 items-center rounded-full bg-brand px-4 text-[13px] font-semibold text-[#FAFAF7]"
@@ -52,34 +37,7 @@ export default function AdminOverviewPage() {
 
       <EnableNotifications role="admin" framed />
 
-      <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <KpiCard
-          label="Live orders"
-          value={isPending ? "—" : String(live.length)}
-          hint={`${searching.length} waiting for a rider`}
-        />
-        <KpiCard
-          label="Completed today"
-          value={isPending ? "—" : String(completedToday.length)}
-          hint={`${completed.length} completed in total`}
-        />
-        <KpiCard
-          label="Cancelled"
-          value={isPending ? "—" : String(cancelled.length)}
-          hint="Still kept in order records"
-        />
-        <KpiCard
-          label="Approved riders"
-          value={isPending ? "—" : String(approvedRiders.length)}
-        />
-        <KpiCard
-          label="Distance covered"
-          value={isPending ? "—" : formatKm(distanceCovered)}
-          hint={`${formatKm(distanceToday)} completed today`}
-        />
-      </div>
-
-      <section className="mt-8 overflow-hidden rounded-xl border border-black/6 bg-white">
+      <section className="mt-6 overflow-hidden rounded-xl border border-black/6 bg-white">
         <div className="flex items-center justify-between border-b border-black/6 px-4 py-3">
           <h2 className="font-display text-[16px] font-semibold">Needs attention</h2>
           <p className="text-[12px] text-[#8A8780]">Searching and live</p>
@@ -112,8 +70,4 @@ export default function AdminOverviewPage() {
       </section>
     </div>
   );
-}
-
-function isToday(iso: string) {
-  return new Date(iso).toDateString() === new Date().toDateString();
 }

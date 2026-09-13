@@ -17,7 +17,9 @@ export const queryKeys = {
     trips: () => [...queryKeys.admin.all, "trips"] as const,
     trip: (id: string) => [...queryKeys.admin.all, "trip", id] as const,
     riders: () => [...queryKeys.admin.all, "riders"] as const,
+    rider: (id: string) => [...queryKeys.admin.all, "rider", id] as const,
     customers: () => [...queryKeys.admin.all, "customers"] as const,
     customer: (id: string) => [...queryKeys.admin.all, "customer", id] as const,
+    settings: () => [...queryKeys.admin.all, "settings"] as const,
   },
 };

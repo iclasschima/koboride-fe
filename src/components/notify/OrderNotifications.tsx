@@ -26,7 +26,8 @@ function CustomerOrderNotifications() {
   const pathname = usePathname();
   const { ready, authenticated, user } = useAuth();
   const customerSurface = !pathname.startsWith("/admin") && !pathname.startsWith("/rider");
-  const { data: trips = [] } = useTrips(ready && authenticated && customerSurface);
+  const { data } = useTrips(ready && authenticated && customerSurface);
+  const trips = data?.trips ?? [];
   const tripId = pathname.match(/^\/trips\/([^/]+)$/)?.[1] ?? "";
   const { data: detail } = useTrip(tripId, Boolean(tripId) && authenticated && customerSurface);
   const seen = useRef(new Map<string, string>());

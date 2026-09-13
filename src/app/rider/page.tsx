@@ -44,7 +44,7 @@ export default function RiderHomePage() {
   if (!approved) {
     return (
       <EmptyState
-        title="Not an approved rider"
+        title="Account inactive"
         description="Ops adds riders from the dashboard. There is no self-signup."
       />
     );
@@ -119,9 +119,7 @@ export default function RiderHomePage() {
             <p className="font-display text-[16px] font-semibold">
               Continue to {job.dropoff}
             </p>
-            <p className="mt-1 text-[13px] text-white/80">
-              Collect {formatNaira(job.feeNgn)} · you keep {formatNaira(job.payoutNgn)}
-            </p>
+            <p className="mt-1 text-[13px] text-white/80">{job.pickup}</p>
           </button>
         ) : null}
 
@@ -191,12 +189,6 @@ function AwaitingRow({
     <li className="rounded-2xl bg-[#EEEDE8] px-4 py-3">
       <p className="truncate text-[14px] font-medium text-[#1A1A16]">{trip.pickup}</p>
       <p className="truncate text-[13px] text-[#8A8780]">→ {trip.dropoff}</p>
-      <p className="mt-2 text-[13px] text-[#5C5A54]">
-        Collect{" "}
-        <span className="num font-semibold text-[#1A1A16]">{formatNaira(trip.feeNgn)}</span>
-        {" · you keep "}
-        <span className="num font-semibold text-[#1A1A16]">{formatNaira(trip.payoutNgn)}</span>
-      </p>
       <div className="mt-2 flex justify-end">
         <Button
           type="button"

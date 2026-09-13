@@ -61,10 +61,7 @@ export function customerOrderAlert(
     return { title: "Order cancelled", body: route };
   }
   if (prevStatus !== "completed" && trip.status === "completed") {
-    return { title: "Delivery confirmed", body: `Your package reached ${trip.dropoff}` };
-  }
-  if (trip.status === "in_progress" && phase === "delivered" && prevPhase !== "delivered") {
-    return { title: "Package delivered", body: "Confirm you received it" };
+    return { title: "Package delivered", body: `Your package reached ${trip.dropoff}` };
   }
   if (
     trip.status === "in_progress" &&

@@ -1,13 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { ActiveToggle } from "@/components/admin/ActiveToggle";
 import { Avatar } from "@/components/ui/Avatar";
-import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/format";
 import {
-  useAddRiderMutation,
   useAdminRiders,
   useRemoveRiderMutation,
   useSetRiderApprovedMutation,
@@ -15,12 +14,9 @@ import {
 
 export default function AdminRidersPage() {
   const { data: riders = [], isPending } = useAdminRiders();
-  const addRider = useAddRiderMutation();
   const setApproved = useSetRiderApprovedMutation();
   const removeRider = useRemoveRiderMutation();
   const [query, setQuery] = useState("");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
@@ -37,44 +33,18 @@ export default function AdminRidersPage() {
       <h1 className="font-display text-[22px] font-semibold tracking-[-0.03em] md:text-[26px]">
         Riders
       </h1>
-      <p className="mt-1 text-[14px] text-[#8A8780]">
-        Add, approve, or remove riders. They sign in on the rider app with that
-        phone number — not as a customer.
-      </p>
-
-      <form
-        className="mt-5 flex flex-col gap-2 rounded-xl border border-black/6 bg-white p-4 sm:flex-row sm:flex-wrap sm:items-end"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setError("");
-          void addRider
-            .mutateAsync({ name, phone })
-            .then(() => {
-              setName("");
-              setPhone("");
-            })
-            .catch((err) =>
-              setError(err instanceof Error ? err.message : "Could not add rider"),
-            );
-        }}
-      >
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Name"
-          className="h-10 w-full rounded-lg bg-[#FAFAF7] px-3 text-[14px] ring-1 ring-black/8 outline-none sm:w-44"
-        />
-        <input
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="Phone"
-          inputMode="tel"
-          className="h-10 w-full rounded-lg bg-[#FAFAF7] px-3 text-[14px] ring-1 ring-black/8 outline-none sm:w-44"
-        />
-        <Button type="submit" size="md" className="w-full sm:w-auto" disabled={addRider.isPending}>
-          {addRider.isPending ? "Saving…" : "Add rider"}
-        </Button>
-      </form>
+      <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <p className="text-[14px] text-[#8A8780]">
+          Add, activate, or remove riders. Photo, ID, and next of kin can be
+          added later.
+        </p>
+        <Link
+          href="/admin/riders/new"
+          className="inline-flex h-9 w-fit items-center rounded-full bg-brand px-4 text-[13px] font-semibold text-[#FAFAF7]"
+        >
+          Add rider
+        </Link>
+      </div>
       {error ? (
         <p className="mt-3 text-[13px] font-medium text-danger">{error}</p>
       ) : null}
@@ -94,7 +64,7 @@ export default function AdminRidersPage() {
             title={riders.length === 0 ? "No riders yet" : "No riders match"}
             description={
               riders.length === 0
-                ? "Add an approved rider above. They sign in on the rider app with that phone."
+                ? "Add a rider with name and phone. Docs can wait."
                 : "Try a different name or phone."
             }
           />
@@ -104,7 +74,10 @@ export default function AdminRidersPage() {
               {rows.map((rider) => (
                 <li key={rider.id} className="px-4 py-3">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-start gap-3">
+                    <Link
+                      href={`/admin/riders/${rider.id}`}
+                      className="flex min-w-0 items-start gap-3"
+                    >
                       <Avatar
                         src={rider.photoUrl}
                         name={rider.name}
@@ -113,35 +86,36 @@ export default function AdminRidersPage() {
                       <div className="min-w-0">
                         <p className="truncate font-display text-[15px] font-semibold">
                           {rider.name}
+                          {rider.docsComplete === false ? (
+                            <span className="ml-2 inline-flex rounded-full bg-[#F3E4D8] px-2 py-0.5 align-middle text-[10px] font-semibold text-[#8A4B1F]">
+                              Docs missing
+                            </span>
+                          ) : null}
                         </p>
-                        <a
-                          href={`tel:${rider.phone}`}
-                          className="mt-0.5 inline-block text-[13px] text-brand"
-                        >
-                          {rider.phone}
-                        </a>
+                        <p className="mt-0.5 text-[13px] text-brand">{rider.phone}</p>
                         <p className="mt-1 text-[12px] text-[#8A8780]">
                           Added {formatDate(rider.createdAt)}
                         </p>
                       </div>
-                    </div>
-                    <button
-                      type="button"
-                      className={cn(
-                        "inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                        rider.approved
-                          ? "bg-[#DCEEE4] text-success"
-                          : "bg-[#F8D4D4] text-danger",
-                      )}
-                      onClick={() =>
-                        void setApproved.mutateAsync({
-                          riderId: rider.id,
-                          approved: !rider.approved,
-                        })
+                    </Link>
+                    <ActiveToggle
+                      active={rider.active ?? rider.approved}
+                      pending={setApproved.isPending}
+                      onToggle={() =>
+                        void setApproved
+                          .mutateAsync({
+                            riderId: rider.id,
+                            approved: !(rider.active ?? rider.approved),
+                          })
+                          .catch((err) =>
+                            setError(
+                              err instanceof Error
+                                ? err.message
+                                : "Could not update rider",
+                            ),
+                          )
                       }
-                    >
-                      {rider.approved ? "Approved" : "Not approved"}
-                    </button>
+                    />
                   </div>
                   <div className="mt-2 flex justify-end">
                     <RiderRemoveAction
@@ -178,7 +152,7 @@ export default function AdminRidersPage() {
                     <th className="px-4 py-3 font-semibold">Rider</th>
                     <th className="px-4 py-3 font-semibold">Phone</th>
                     <th className="px-4 py-3 font-semibold">Added</th>
-                    <th className="px-4 py-3 font-semibold">Approved</th>
+                    <th className="px-4 py-3 font-semibold">Status</th>
                     <th className="px-4 py-3 font-semibold">
                       <span className="sr-only">Actions</span>
                     </th>
@@ -188,37 +162,46 @@ export default function AdminRidersPage() {
                   {rows.map((rider) => (
                     <tr key={rider.id} className="border-b border-black/5 last:border-0">
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2.5">
+                        <Link
+                          href={`/admin/riders/${rider.id}`}
+                          className="flex items-center gap-2.5 font-semibold text-brand hover:underline"
+                        >
                           <Avatar
                             src={rider.photoUrl}
                             name={rider.name}
                             className="h-8 w-8 shrink-0 text-[12px]"
                           />
-                          <span className="font-semibold">{rider.name}</span>
-                        </div>
+                          <span>{rider.name}</span>
+                          {rider.docsComplete === false ? (
+                            <span className="ml-1 inline-flex rounded-full bg-[#F3E4D8] px-2 py-0.5 text-[10px] font-semibold text-[#8A4B1F]">
+                              Docs missing
+                            </span>
+                          ) : null}
+                        </Link>
                       </td>
                       <td className="px-4 py-3">{rider.phone}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-[#8A8780]">
                         {formatDate(rider.createdAt)}
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          className={cn(
-                            "inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                            rider.approved
-                              ? "bg-[#DCEEE4] text-success"
-                              : "bg-[#F8D4D4] text-danger",
-                          )}
-                          onClick={() =>
-                            void setApproved.mutateAsync({
-                              riderId: rider.id,
-                              approved: !rider.approved,
-                            })
+                        <ActiveToggle
+                          active={rider.active ?? rider.approved}
+                          pending={setApproved.isPending}
+                          onToggle={() =>
+                            void setApproved
+                              .mutateAsync({
+                                riderId: rider.id,
+                                approved: !(rider.active ?? rider.approved),
+                              })
+                              .catch((err) =>
+                                setError(
+                                  err instanceof Error
+                                    ? err.message
+                                    : "Could not update rider",
+                                ),
+                              )
                           }
-                        >
-                          {rider.approved ? "Approved" : "Not approved"}
-                        </button>
+                        />
                       </td>
                       <td className="px-4 py-3 text-right">
                         <RiderRemoveAction

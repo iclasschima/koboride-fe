@@ -3,9 +3,25 @@ import type { CreateTripInput, Trip } from "@/types/request";
 
 const rider = { rider: true as const };
 
+export type TripsPage = {
+  trips: Trip[];
+  maxActiveOrders: number;
+  activeOrders?: number;
+  canPlaceOrder?: boolean;
+};
+
+export async function listTripsPage(): Promise<TripsPage> {
+  const data = await api.get<TripsPage>("/api/orders");
+  return {
+    trips: data.trips,
+    maxActiveOrders: data.maxActiveOrders ?? 3,
+    activeOrders: data.activeOrders,
+    canPlaceOrder: data.canPlaceOrder,
+  };
+}
+
 export async function listTrips(): Promise<Trip[]> {
-  const data = await api.get<{ trips: Trip[] }>("/api/orders");
-  return data.trips;
+  return (await listTripsPage()).trips;
 }
 
 export async function getTrip(id: string): Promise<Trip> {
@@ -39,18 +55,16 @@ export async function estimateFare(input: {
   return api.post<FareEstimate>("/api/orders/estimate-fare", input, { token: null });
 }
 
-export async function cancelOrder(tripId: string): Promise<Trip> {
-  const data = await api.post<{ trip: Trip }>(`/api/orders/${tripId}/cancel`);
+export async function cancelOrder(
+  tripId: string,
+  input: { reason: string; note?: string },
+): Promise<Trip> {
+  const data = await api.post<{ trip: Trip }>(`/api/orders/${tripId}/cancel`, input);
   return data.trip;
 }
 
 export async function autoAssignTrip(tripId: string): Promise<Trip> {
   const data = await api.post<{ trip: Trip }>(`/api/orders/${tripId}/auto-assign`);
-  return data.trip;
-}
-
-export async function confirmCompletion(tripId: string): Promise<Trip> {
-  const data = await api.post<{ trip: Trip }>(`/api/orders/${tripId}/confirm`);
   return data.trip;
 }
 
@@ -86,15 +100,6 @@ export type RiderMe = {
   approved: boolean;
   online: boolean;
 } | null;
-
-export async function uploadRiderPhoto(file: File): Promise<{
-  photoUrl: string;
-  user: { id: string; phone: string; name: string; photoUrl: string | null };
-}> {
-  const body = new FormData();
-  body.append("photo", file);
-  return api.postForm("/api/riders/photo", body, rider);
-}
 
 export async function getRiderMe(): Promise<RiderMe> {
   try {

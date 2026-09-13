@@ -55,7 +55,7 @@ export default function AdminOrdersPage() {
         </p>
         <Link
           href="/admin/orders/new"
-          className="inline-flex h-9 w-fit items-center rounded-full bg-brand px-4 text-[13px] font-semibold text-[#FAFAF7]"
+          className="inline-flex h-9 items-center rounded-full bg-brand px-4 text-[13px] font-semibold text-[#FAFAF7]"
         >
           Create order
         </Link>

@@ -1,7 +1,13 @@
 "use client";
 
 import { EmptyState } from "@/components/ui/EmptyState";
-import { commissionNgn, formatDateTime, formatNaira } from "@/lib/format";
+import {
+  commissionNgn,
+  formatDateTime,
+  formatDuration,
+  formatNaira,
+  tripDurationSeconds,
+} from "@/lib/format";
 import { useRiderEarnings, useRiderMe } from "@/lib/query/hooks";
 
 export default function RiderEarningsPage() {
@@ -19,7 +25,7 @@ export default function RiderEarningsPage() {
   if (!approved) {
     return (
       <EmptyState
-        title="Not an approved rider"
+        title="Account inactive"
         description="Ops adds riders from the dashboard. There is no self-signup."
       />
     );
@@ -69,7 +75,12 @@ export default function RiderEarningsPage() {
                     <p className="font-display truncate text-[15px] font-semibold">
                       {trip.dropoff}
                     </p>
-                    <p className="text-[12px] text-[#8A8780]">{formatDateTime(trip.createdAt)}</p>
+                    <p className="text-[12px] text-[#8A8780]">
+                      {formatDateTime(trip.createdAt)}
+                      {tripDurationSeconds(trip) != null
+                        ? ` · ${formatDuration(tripDurationSeconds(trip)!)}`
+                        : ""}
+                    </p>
                   </div>
                   <p className="num shrink-0 text-[15px] font-semibold">
                     {formatNaira(trip.payoutNgn)}

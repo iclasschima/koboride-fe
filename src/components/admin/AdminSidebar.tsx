@@ -7,6 +7,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   LogOut,
+  Settings,
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -17,6 +18,7 @@ const NAV = [
   { href: "/admin/orders", label: "Orders", icon: ClipboardList, exact: false },
   { href: "/admin/users", label: "Users", icon: Users, exact: false },
   { href: "/admin/riders", label: "Riders", icon: Bike, exact: false },
+  { href: "/admin/settings", label: "Settings", icon: Settings, exact: false },
 ] as const;
 
 function isActive(pathname: string, href: string, exact: boolean) {
@@ -97,7 +99,7 @@ export function AdminSidebar() {
         className="fixed inset-x-0 bottom-0 z-30 border-t border-black/8 bg-white pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1 md:hidden"
         aria-label="Ops"
       >
-        <ul className="grid grid-cols-4">
+        <ul className="grid grid-cols-5">
           {NAV.map((item) => {
             const active = isActive(pathname, item.href, item.exact);
             const Icon = item.icon;

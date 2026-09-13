@@ -24,19 +24,37 @@ export class ApiError extends Error {
   }
 }
 
-function readUser(key: string): SessionUser | null {
+function readPersisted(key: string): string | null {
   if (typeof window === "undefined") return null;
+  const local = localStorage.getItem(key);
+  if (local) return local;
+  const session = sessionStorage.getItem(key);
+  if (session) {
+    localStorage.setItem(key, session);
+    sessionStorage.removeItem(key);
+  }
+  return session;
+}
+
+function writePersisted(key: string, value: string | null): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(key);
+  if (!value) localStorage.removeItem(key);
+  else localStorage.setItem(key, value);
+}
+
+function readUser(key: string): SessionUser | null {
+  const raw = readPersisted(key);
+  if (!raw) return null;
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as SessionUser) : null;
+    return JSON.parse(raw) as SessionUser;
   } catch {
     return null;
   }
 }
 
 export function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(TOKEN_KEY);
+  return readPersisted(TOKEN_KEY);
 }
 
 export function getStoredUser(): SessionUser | null {
@@ -44,16 +62,12 @@ export function getStoredUser(): SessionUser | null {
 }
 
 export function setSession(token: string | null, user: SessionUser | null) {
-  if (typeof window === "undefined") return;
-  if (!token) localStorage.removeItem(TOKEN_KEY);
-  else localStorage.setItem(TOKEN_KEY, token);
-  if (!user) localStorage.removeItem(USER_KEY);
-  else localStorage.setItem(USER_KEY, JSON.stringify(user));
+  writePersisted(TOKEN_KEY, token);
+  writePersisted(USER_KEY, user ? JSON.stringify(user) : null);
 }
 
 export function getRiderToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(RIDER_TOKEN_KEY);
+  return readPersisted(RIDER_TOKEN_KEY);
 }
 
 export function getStoredRiderUser(): SessionUser | null {
@@ -61,16 +75,12 @@ export function getStoredRiderUser(): SessionUser | null {
 }
 
 export function setRiderSession(token: string | null, user: SessionUser | null) {
-  if (typeof window === "undefined") return;
-  if (!token) localStorage.removeItem(RIDER_TOKEN_KEY);
-  else localStorage.setItem(RIDER_TOKEN_KEY, token);
-  if (!user) localStorage.removeItem(RIDER_USER_KEY);
-  else localStorage.setItem(RIDER_USER_KEY, JSON.stringify(user));
+  writePersisted(RIDER_TOKEN_KEY, token);
+  writePersisted(RIDER_USER_KEY, user ? JSON.stringify(user) : null);
 }
 
 export function getAdminToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return sessionStorage.getItem(ADMIN_TOKEN_KEY);
+  return readPersisted(ADMIN_TOKEN_KEY);
 }
 
 export async function loginCustomer(
@@ -108,7 +118,7 @@ export async function loginAdmin(email: string, password: string): Promise<void>
     body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
     token: null,
   });
-  sessionStorage.setItem(ADMIN_TOKEN_KEY, data.token);
+  writePersisted(ADMIN_TOKEN_KEY, data.token);
 }
 
 export function logoutCustomer() {
@@ -120,8 +130,7 @@ export function logoutRider() {
 }
 
 export function logoutAdmin() {
-  if (typeof window === "undefined") return;
-  sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+  writePersisted(ADMIN_TOKEN_KEY, null);
 }
 
 async function adminToken(): Promise<string> {
@@ -167,7 +176,7 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
   if (!res.ok) {
     if (typeof window !== "undefined" && res.status === 401) {
       if (admin) {
-        sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+        writePersisted(ADMIN_TOKEN_KEY, null);
         const here = window.location.pathname;
         if (here.startsWith("/admin") && here !== "/admin/login") {
           window.location.replace("/admin/login");
@@ -198,6 +207,13 @@ export const api = {
     }),
   patch: <T>(path: string, body?: unknown, opts?: RequestOpts) =>
     request<T>(path, { ...opts, method: "PATCH", body: body === undefined ? undefined : JSON.stringify(body) }),
+  patchForm: <T>(path: string, body: FormData, opts?: RequestOpts) =>
+    request<T>(path, {
+      ...opts,
+      method: "PATCH",
+      body,
+      headers: { ...(opts?.headers ?? {}) },
+    }),
   delete: <T>(path: string, opts?: RequestOpts) =>
     request<T>(path, { ...opts, method: "DELETE" }),
 };

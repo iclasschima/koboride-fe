@@ -11,14 +11,13 @@ import { Button } from "@/components/ui/Button";
 import { StatusStepper } from "@/components/ui/StatusStepper";
 import { NotifyPrompt } from "@/components/notify/NotifyPrompt";
 import { ReportOrderButton } from "@/components/support/WhatsAppSupport";
-import { formatNaira, formatCountdown } from "@/lib/format";
+import { formatNaira, formatDuration, tripDurationSeconds } from "@/lib/format";
 import {
   useAutoAssignMutation,
   useCancelOrderMutation,
-  useConfirmCompletionMutation,
   useTrip,
 } from "@/lib/query/hooks";
-import { canCustomerCancel, tripHeadline } from "@/types/request";
+import { CANCEL_REASONS, canCustomerCancel, tripHeadline } from "@/types/request";
 import { ApiError } from "@/lib/api/client";
 
 const SEARCH_MS = 4_000;
@@ -35,11 +34,11 @@ export default function TripDetailPage() {
   const autoAssign = useAutoAssignMutation();
   const assignOnce = useRef<string | null>(null);
   const cancelOrder = useCancelOrderMutation();
-  const confirmCompletion = useConfirmCompletionMutation();
 
   const [snap, setSnap] = useState<number | string | null>(PEEK);
-  const [autoConfirmLeft, setAutoConfirmLeft] = useState<number | null>(null);
   const [askCancel, setAskCancel] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelNote, setCancelNote] = useState("");
   const [cancelError, setCancelError] = useState("");
 
   useEffect(() => {
@@ -47,28 +46,6 @@ export default function TripDetailPage() {
       setSnap(OPEN);
     }
   }, [trip?.riderPhase, trip?.status]);
-
-  useEffect(() => {
-    const due =
-      trip?.status === "in_progress" && trip.riderPhase === "delivered"
-        ? trip.autoConfirmInMs
-        : null;
-    if (due == null || !trip) {
-      setAutoConfirmLeft(null);
-      return;
-    }
-    const started = Date.now();
-    const remaining = () => due - (Date.now() - started);
-    setAutoConfirmLeft(remaining());
-    const tick = window.setInterval(() => setAutoConfirmLeft(remaining()), 15_000);
-    const done = window.setTimeout(() => {
-      void confirmCompletion.mutateAsync(trip.id).catch(() => undefined);
-    }, Math.max(0, due));
-    return () => {
-      window.clearInterval(tick);
-      window.clearTimeout(done);
-    };
-  }, [confirmCompletion, trip?.autoConfirmInMs, trip?.id, trip?.riderPhase, trip?.status]);
 
   useEffect(() => {
     if (!trip || trip.status !== "dispatching") return;
@@ -103,7 +80,6 @@ export default function TripDetailPage() {
     );
   }
 
-  const delivered = trip.status === "in_progress" && trip.riderPhase === "delivered";
   const assigned = trip.status === "in_progress";
   const searching = trip.status === "dispatching";
   const showCancel = canCustomerCancel(trip);
@@ -111,7 +87,11 @@ export default function TripDetailPage() {
   async function handleCancel() {
     setCancelError("");
     try {
-      await cancelOrder.mutateAsync(tripId);
+      await cancelOrder.mutateAsync({
+        tripId,
+        reason: cancelReason,
+        note: cancelReason === "Other" ? cancelNote.trim() : undefined,
+      });
       router.push("/");
     } catch (err) {
       setAskCancel(false);
@@ -157,6 +137,11 @@ export default function TripDetailPage() {
           {searching || assigned || trip.status === "completed" ? (
             <div className="mb-4">
               <StatusStepper trip={trip} />
+              {trip.status === "completed" && tripDurationSeconds(trip) != null ? (
+                <p className="mt-2 text-[13px] text-[#8A8780]">
+                  Completed in {formatDuration(tripDurationSeconds(trip)!)}
+                </p>
+              ) : null}
               {searching || assigned ? <NotifyPrompt /> : null}
             </div>
           ) : null}
@@ -230,9 +215,14 @@ export default function TripDetailPage() {
           ) : null}
 
           {trip.status === "cancelled" ? (
-            <p className="font-display text-[22px] font-semibold tracking-[-0.03em]">
-              This request was cancelled
-            </p>
+            <div>
+              <p className="font-display text-[22px] font-semibold tracking-[-0.03em]">
+                This request was cancelled
+              </p>
+              {trip.cancelReason ? (
+                <p className="mt-2 text-[13px] text-[#8A8780]">{trip.cancelReason}</p>
+              ) : null}
+            </div>
           ) : null}
 
           <div className="pt-5">
@@ -242,12 +232,41 @@ export default function TripDetailPage() {
                   <div className="space-y-3">
                     <p className="text-center text-[13px] text-[#8A8780]">
                       {assigned
-                        ? "The rider is already on the way. Cancel this pickup?"
-                        : "Cancel this request?"}
+                        ? "The rider is already on the way. Why are you cancelling?"
+                        : "Why are you cancelling?"}
                     </p>
+                    <div className="flex flex-wrap justify-center gap-1.5">
+                      {CANCEL_REASONS.map((reason) => (
+                        <button
+                          key={reason}
+                          type="button"
+                          className={
+                            cancelReason === reason
+                              ? "rounded-full bg-brand px-2.5 py-1 text-[12px] font-semibold text-white"
+                              : "rounded-full bg-[#FAFAF7] px-2.5 py-1 text-[12px] font-medium text-[#1A1A16]"
+                          }
+                          onClick={() => setCancelReason(reason)}
+                        >
+                          {reason}
+                        </button>
+                      ))}
+                    </div>
+                    {cancelReason === "Other" ? (
+                      <textarea
+                        value={cancelNote}
+                        onChange={(e) => setCancelNote(e.target.value)}
+                        rows={2}
+                        placeholder="Add a short note"
+                        className="w-full rounded-2xl bg-[#FAFAF7] px-3 py-2 text-[14px] outline-none"
+                      />
+                    ) : null}
                     <Button
                       className="w-full"
-                      disabled={cancelOrder.isPending}
+                      disabled={
+                        cancelOrder.isPending ||
+                        !cancelReason ||
+                        (cancelReason === "Other" && cancelNote.trim().length < 4)
+                      }
                       onClick={() => void handleCancel()}
                     >
                       {cancelOrder.isPending ? "Cancelling…" : "Yes, cancel"}
@@ -256,7 +275,11 @@ export default function TripDetailPage() {
                       type="button"
                       className="w-full text-center text-[14px] font-medium text-[#8A8780]"
                       disabled={cancelOrder.isPending}
-                      onClick={() => setAskCancel(false)}
+                      onClick={() => {
+                        setAskCancel(false);
+                        setCancelReason("");
+                        setCancelNote("");
+                      }}
                     >
                       Keep waiting
                     </button>
@@ -267,6 +290,8 @@ export default function TripDetailPage() {
                     className="w-full text-center text-[14px] font-medium text-[#8A8780]"
                     onClick={() => {
                       setCancelError("");
+                      setCancelReason("");
+                      setCancelNote("");
                       setAskCancel(true);
                     }}
                   >
@@ -278,25 +303,6 @@ export default function TripDetailPage() {
                     {cancelError}
                   </p>
                 ) : null}
-              </div>
-            ) : null}
-
-            {delivered ? (
-              <div>
-                {autoConfirmLeft != null ? (
-                  <p className="mb-3 text-center text-[13px] text-[#8A8780]">
-                    {autoConfirmLeft > 0
-                      ? `Auto-confirms in ${formatCountdown(autoConfirmLeft)}`
-                      : "Auto-confirming…"}
-                  </p>
-                ) : null}
-                <Button
-                  className="w-full"
-                  disabled={confirmCompletion.isPending}
-                  onClick={() => void confirmCompletion.mutateAsync(trip.id)}
-                >
-                  {confirmCompletion.isPending ? "Confirming…" : "Confirm delivered"}
-                </Button>
               </div>
             ) : null}
 

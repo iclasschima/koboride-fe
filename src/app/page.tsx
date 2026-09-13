@@ -12,12 +12,15 @@ import { isActiveTrip } from "@/types/request";
 export default function HomePage() {
   const router = useRouter();
   const { authenticated, openAuth, user, ready } = useAuth();
-  const { data: trips = [] } = useTrips(ready && authenticated);
+  const { data } = useTrips(ready && authenticated);
+  const trips = data?.trips ?? [];
 
   const [pickup, setPickup] = useState<string | null>(null);
   const [dropoff, setDropoff] = useState<string | null>(null);
 
-  const active = trips.find(isActiveTrip);
+  const live = trips.filter(isActiveTrip);
+  const active = live[0];
+  const maxActiveOrders = data?.maxActiveOrders ?? 3;
   const initial = (user?.name ?? "You").trim().charAt(0).toUpperCase();
 
   const onRouteChange = useCallback((from: string | null, to: string | null) => {
@@ -62,7 +65,12 @@ export default function HomePage() {
         </button>
       </div>
 
-      <BookingSheet activeTrip={active ?? null} onRouteChange={onRouteChange} />
+      <BookingSheet
+        activeTrip={active ?? null}
+        activeCount={live.length}
+        maxActiveOrders={maxActiveOrders}
+        onRouteChange={onRouteChange}
+      />
     </div>
   );
 }

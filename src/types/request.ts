@@ -36,11 +36,15 @@ export type Trip = {
   payoutPaid: boolean;
   distanceKm: number;
   deliveryPin?: string | null;
+  requiresDeliveryPin?: boolean;
   deliveryProof?: string | null;
   deliveryProofNote?: string | null;
   deliveryProofPhotoUrl?: string | null;
+  cancelReason?: string | null;
   createdAt: string;
   updatedAt: string;
+  completedAt?: string | null;
+  durationSeconds?: number | null;
   autoConfirmInMs: number | null;
 };
 
@@ -82,6 +86,15 @@ export const RIDER_PHASES: RiderPhase[] = [
 ];
 
 export const YABA_FLAT_FEE_NGN = 1000;
+
+export const CANCEL_REASONS = [
+  "Ordered by mistake",
+  "Wrong pickup or drop-off",
+  "Rider taking too long",
+  "Changed my mind",
+  "Receiver not available",
+  "Other",
+] as const;
 
 /** Customer can cancel until the rider has the package. */
 export function canCustomerCancel(trip: Trip): boolean {

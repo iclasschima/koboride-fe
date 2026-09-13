@@ -36,9 +36,13 @@ type SearchTarget = "pickup" | "dropoff";
 
 export function BookingSheet({
   activeTrip,
+  activeCount = 0,
+  maxActiveOrders = 3,
   onRouteChange,
 }: {
   activeTrip: Trip | null;
+  activeCount?: number;
+  maxActiveOrders?: number;
   onRouteChange: (pickup: string | null, dropoff: string | null) => void;
 }) {
   const router = useRouter();
@@ -163,7 +167,15 @@ export function BookingSheet({
 
   const sending = customerRole === "sender";
 
+  const atActiveLimit = activeCount >= maxActiveOrders;
+
   function startBooking() {
+    if (atActiveLimit) {
+      setError(
+        `You already have ${maxActiveOrders} live orders. Finish or cancel one to book again.`,
+      );
+      return;
+    }
     setStep("locations");
     setSnap(MID);
     setError("");
@@ -330,14 +342,18 @@ export function BookingSheet({
           <button
             type="button"
             className="mb-3 flex w-full items-center justify-between rounded-2xl bg-brand px-4 py-3 text-left text-[#FAFAF7]"
-            onClick={() => router.push(`/trips/${activeTrip.id}`)}
+            onClick={() =>
+              router.push(activeCount > 1 ? "/trips" : `/trips/${activeTrip.id}`)
+            }
           >
             <div className="min-w-0">
               <p className="font-display text-[11px] font-medium uppercase tracking-[0.08em] text-white/70">
                 Live
               </p>
               <p className="truncate font-display text-[16px] font-semibold">
-                {tripHeadline(activeTrip)}
+                {activeCount > 1
+                  ? `${activeCount} live orders`
+                  : tripHeadline(activeTrip)}
               </p>
             </div>
             <span className="kb-pulse shrink-0 text-[12px] font-semibold">Open</span>
@@ -360,6 +376,7 @@ export function BookingSheet({
                 className={cn(
                   "relative z-50 flex min-h-[7.5rem] w-full flex-col items-start rounded-[22px] bg-[#EEEDE8] px-3.5 py-4 text-left",
                   "pointer-events-auto touch-manipulation select-none active:bg-[#E4E2DB]",
+                  atActiveLimit && "opacity-60",
                 )}
               >
                 <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#FAFAF7] text-brand">
@@ -390,6 +407,14 @@ export function BookingSheet({
                 </span>
               </div>
             </div>
+            {atActiveLimit ? (
+              <p className="mt-3 text-[13px] font-medium text-[#8A8780]">
+                You already have {maxActiveOrders} live orders. Finish or cancel
+                one to book again.
+              </p>
+            ) : error ? (
+              <p className="mt-3 text-[13px] font-medium text-danger">{error}</p>
+            ) : null}
           </div>
         ) : null}
 

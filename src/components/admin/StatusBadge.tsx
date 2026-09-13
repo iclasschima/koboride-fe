@@ -5,7 +5,7 @@ const TONE: Record<TripStatus, string> = {
   dispatching: "bg-[#F8E7C4] text-[#8A5A00]",
   in_progress: "bg-[#DCEEE4] text-brand",
   completed: "bg-[#DCEEE4] text-success",
-  cancelled: "bg-[#EEEDE8] text-[#6B675F]",
+  cancelled: "bg-[#F8D4D4] text-danger",
 };
 
 export function StatusBadge({ status }: { status: TripStatus }) {

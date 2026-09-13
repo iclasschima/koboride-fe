@@ -1,6 +1,14 @@
 import { cn } from "@/lib/cn";
-import { formatDateTime, formatNaira } from "@/lib/format";
+import { formatDateTime, formatDuration, formatNaira, tripDurationSeconds } from "@/lib/format";
 import { tripHeadline, type Trip } from "@/types/request";
+
+function statusTone(trip: Trip) {
+  if (trip.status === "cancelled") return "text-danger";
+  if (trip.status === "completed") return "text-success";
+  if (trip.status === "dispatching") return "text-[#8A5A00]";
+  if (trip.riderPhase === "delivered") return "text-success";
+  return "text-brand";
+}
 
 export function TripStatusCard({
   trip,
@@ -36,7 +44,12 @@ export function TripStatusCard({
           </p>
         </div>
         <p className="mt-0.5 text-[13px] text-[#8A8780]">
-          <span className="font-display font-medium">{tripHeadline(trip)}</span>
+          <span className={cn("font-display font-medium", statusTone(trip))}>
+            {tripHeadline(trip)}
+          </span>
+          {tripDurationSeconds(trip) != null
+            ? ` · ${formatDuration(tripDurationSeconds(trip)!)}`
+            : ""}
           {" · "}
           {formatDateTime(trip.createdAt)}
         </p>

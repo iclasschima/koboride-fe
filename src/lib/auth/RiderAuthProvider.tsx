@@ -23,7 +23,6 @@ type RiderAuthContextValue = {
   authenticated: boolean;
   user: User | null;
   login: (phone: string) => Promise<User>;
-  updateUser: (patch: Partial<User>) => void;
   logout: () => void;
 };
 
@@ -67,25 +66,15 @@ export function RiderAuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
   }, []);
 
-  const updateUser = useCallback((patch: Partial<User>) => {
-    setUser((prev) => {
-      if (!prev) return prev;
-      const next = { ...prev, ...patch };
-      setRiderSession(getRiderToken(), next);
-      return next;
-    });
-  }, []);
-
   const value = useMemo(
     () => ({
       ready,
-      authenticated: Boolean(token && user),
+      authenticated: Boolean(token),
       user,
       login,
-      updateUser,
       logout,
     }),
-    [ready, token, user, login, updateUser, logout],
+    [ready, token, user, login, logout],
   );
 
   return <RiderAuthContext.Provider value={value}>{children}</RiderAuthContext.Provider>;

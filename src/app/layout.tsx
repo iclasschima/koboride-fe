@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
+import { Clarity } from "@/components/analytics/Clarity";
 import { Providers } from "@/components/Providers";
 import "./globals.css";
 
@@ -53,6 +54,7 @@ export default function RootLayout({
       className={`${inter.variable} ${spaceGrotesk.variable}`}
     >
       <body className={`${inter.className} antialiased`}>
+        <Clarity />
         <Providers>{children}</Providers>
       </body>
     </html>

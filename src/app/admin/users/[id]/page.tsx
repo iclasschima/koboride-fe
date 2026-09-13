@@ -3,13 +3,21 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
+import { ActiveToggle } from "@/components/admin/ActiveToggle";
 import { OrdersTable } from "@/components/admin/OrdersTable";
+import { Button } from "@/components/ui/Button";
 import { formatDate, formatNaira } from "@/lib/format";
-import { useAdminCustomer } from "@/lib/query/hooks";
+import {
+  useAdminCustomer,
+  useResetCustomerCancelsMutation,
+  useSetCustomerActiveMutation,
+} from "@/lib/query/hooks";
 
 export default function AdminUserDetailPage() {
   const params = useParams<{ id: string }>();
   const { data, isPending, isError } = useAdminCustomer(params.id);
+  const setActive = useSetCustomerActiveMutation();
+  const resetCancels = useResetCustomerCancelsMutation();
 
   if (isPending) {
     return <div className="h-64 animate-pulse rounded-xl bg-[#EEEDE8]" />;
@@ -60,16 +68,52 @@ export default function AdminUserDetailPage() {
             Joined {formatDate(customer.createdAt)}
           </p>
         </div>
+        <ActiveToggle
+          active={customer.active}
+          pending={setActive.isPending}
+          onToggle={() =>
+            void setActive.mutateAsync({
+              customerId: customer.id,
+              active: !customer.active,
+            })
+          }
+        />
       </div>
 
-      <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
         <Stat label="Orders" value={String(customer.ordersCount)} />
         <Stat label="Spent" value={formatNaira(customer.spentNgn)} />
         <Stat
           label="Last order"
           value={customer.lastOrderAt ? formatDate(customer.lastOrderAt) : "—"}
         />
+        <Stat
+          label="Live"
+          value={`${customer.activeOrders ?? 0}/${customer.maxActiveOrders ?? 3}`}
+        />
+        <Stat
+          label="Cancels"
+          value={`${customer.cancelsInWindow ?? 0}/${customer.cancelLimit ?? 3}`}
+        />
       </div>
+
+      {customer.cancelLimited ? (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-black/6 bg-white px-4 py-3">
+          <p className="text-[13px] text-[#8A8780]">
+            This user has used all {customer.cancelLimit ?? 3} cancels in the last{" "}
+            {customer.cancelWindowHours ?? 24} hours.
+          </p>
+          <Button
+            type="button"
+            size="md"
+            variant="secondary"
+            disabled={resetCancels.isPending}
+            onClick={() => void resetCancels.mutateAsync(customer.id)}
+          >
+            {resetCancels.isPending ? "Resetting…" : "Allow cancels again"}
+          </Button>
+        </div>
+      ) : null}
 
       <section className="mt-8 overflow-hidden rounded-xl border border-black/6 bg-white">
         <div className="border-b border-black/6 px-4 py-3">

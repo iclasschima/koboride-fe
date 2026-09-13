@@ -8,7 +8,6 @@ import { CityMap } from "@/components/map/CityMap";
 import { ReportOrderButton } from "@/components/support/WhatsAppSupport";
 import { Button } from "@/components/ui/Button";
 import { StatusStepper } from "@/components/ui/StatusStepper";
-import { commissionNgn, formatNaira } from "@/lib/format";
 import { useAdvanceRiderMutation, useRiderTrip } from "@/lib/query/hooks";
 import type { RiderPhase } from "@/types/request";
 
@@ -33,6 +32,11 @@ const CONFIRM: Partial<
     title: "Item collected?",
     body: "Only continue if you have the package with you.",
     confirm: "Yes, collected",
+  },
+  en_route_dropoff: {
+    title: "Mark as delivered?",
+    body: "Only continue if you have handed this to the receiver.",
+    confirm: "Yes, delivered",
   },
 };
 
@@ -77,6 +81,7 @@ export default function RiderJobPage() {
   }
 
   const phase = trip.riderPhase ?? "accepted";
+  const needsPin = Boolean(trip.requiresDeliveryPin ?? trip.deliveryPin);
   const confirm = CONFIRM[phase];
   const navTo =
     phase === "accepted" || phase === "en_route_pickup" ? trip.pickup : trip.dropoff;
@@ -88,7 +93,7 @@ export default function RiderJobPage() {
       const updated = await advance.mutateAsync({ tripId: params.id, ...input });
       setAskConfirm(false);
       setSkipOpen(false);
-      if (updated.riderPhase === "delivered") {
+      if (updated.status === "completed" || updated.riderPhase === "delivered") {
         router.push("/rider");
       }
     } catch (err) {
@@ -97,7 +102,7 @@ export default function RiderJobPage() {
   }
 
   function onAdvanceClick() {
-    if (phase === "en_route_dropoff") {
+    if (phase === "en_route_dropoff" && needsPin) {
       setAskConfirm(true);
       return;
     }
@@ -110,7 +115,13 @@ export default function RiderJobPage() {
 
   return (
     <div className="relative flex h-full flex-col bg-[#FAFAF7]">
-      <div className="relative h-[42vh] min-h-52">
+      <div
+        className={
+          askConfirm
+            ? "relative h-[22vh] min-h-32 shrink-0"
+            : "relative h-[42vh] min-h-52 shrink-0"
+        }
+      >
         <CityMap
           className="absolute inset-0"
           mode="route"
@@ -130,51 +141,48 @@ export default function RiderJobPage() {
         />
       </div>
 
-      <div className="relative z-10 -mt-5 flex flex-1 flex-col rounded-t-[28px] bg-[#FAFAF7] px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-        <StatusStepper trip={trip} />
+      <div className="relative z-10 -mt-5 min-h-0 flex-1 overflow-y-auto rounded-t-[28px] bg-[#FAFAF7] px-5 pt-4 pb-[max(3rem,calc(env(safe-area-inset-bottom)+2rem))]">
+        {!askConfirm ? (
+          <>
+            <StatusStepper trip={trip} />
+            <div className="mt-5">
+              <h1 className="font-display text-[24px] font-semibold tracking-[-0.03em]">
+                {phase === "accepted" || phase === "en_route_pickup"
+                  ? "Pickup"
+                  : "Drop-off"}
+              </h1>
+              <p className="mt-2 text-[15px] text-[#8A8780]">
+                {phase === "accepted" || phase === "en_route_pickup"
+                  ? trip.pickup
+                  : trip.dropoff}
+              </p>
+              <ContactRow
+                label={
+                  phase === "accepted" || phase === "en_route_pickup"
+                    ? "Pickup from"
+                    : "Deliver to"
+                }
+                name={
+                  phase === "accepted" || phase === "en_route_pickup"
+                    ? trip.senderName
+                    : trip.receiverName
+                }
+                phone={
+                  phase === "accepted" || phase === "en_route_pickup"
+                    ? trip.senderPhone
+                    : trip.receiverPhone
+                }
+              />
+              {trip.notes ? (
+                <p className="mt-3 rounded-2xl bg-[#EEEDE8] px-4 py-3 text-[14px]">
+                  {trip.notes}
+                </p>
+              ) : null}
+            </div>
+          </>
+        ) : null}
 
-        <div className="mt-5 flex-1">
-          <h1 className="font-display text-[24px] font-semibold tracking-[-0.03em]">
-            {phase === "accepted" || phase === "en_route_pickup"
-              ? "Pickup"
-              : "Drop-off"}
-          </h1>
-          <p className="mt-2 text-[15px] text-[#8A8780]">
-            {phase === "accepted" || phase === "en_route_pickup"
-              ? trip.pickup
-              : trip.dropoff}
-          </p>
-          <ContactRow
-            label={phase === "accepted" || phase === "en_route_pickup" ? "Pickup from" : "Deliver to"}
-            name={
-              phase === "accepted" || phase === "en_route_pickup"
-                ? trip.senderName
-                : trip.receiverName
-            }
-            phone={
-              phase === "accepted" || phase === "en_route_pickup"
-                ? trip.senderPhone
-                : trip.receiverPhone
-            }
-          />
-          {trip.notes ? (
-            <p className="mt-3 rounded-2xl bg-[#EEEDE8] px-4 py-3 text-[14px]">{trip.notes}</p>
-          ) : null}
-          <div className="mt-3 rounded-2xl bg-[#EEEDE8] px-4 py-3">
-            <p className="text-[11px] font-medium tracking-[0.06em] text-[#8A8780] uppercase">
-              Payment
-            </p>
-            <PayRow label="Collect cash" amount={trip.feeNgn} />
-            <PayRow label="You keep" amount={trip.payoutNgn} />
-            <PayRow
-              label="KoboRide commission"
-              amount={commissionNgn(trip.feeNgn, trip.payoutNgn)}
-              muted
-            />
-          </div>
-        </div>
-
-        <div className="mt-4 space-y-2">
+        <div className={askConfirm ? "space-y-2" : "mt-4 space-y-2"}>
           {phase !== "delivered" && !askConfirm ? (
             <a href={maps} target="_blank" rel="noreferrer">
               <Button className="w-full" variant="secondary">
@@ -183,7 +191,7 @@ export default function RiderJobPage() {
               </Button>
             </a>
           ) : null}
-          {phase === "en_route_dropoff" && askConfirm ? (
+          {phase === "en_route_dropoff" && askConfirm && needsPin ? (
             <div className="rounded-[24px] bg-[#EEEDE8] px-4 py-4">
               <p className="font-display text-[18px] font-semibold tracking-[-0.02em]">
                 Enter delivery PIN
@@ -325,25 +333,6 @@ export default function RiderJobPage() {
         </div>
       </div>
     </div>
-  );
-}
-
-function PayRow({
-  label,
-  amount,
-  muted,
-}: {
-  label: string;
-  amount: number;
-  muted?: boolean;
-}) {
-  return (
-    <p className="mt-1 flex justify-between text-[14px] first:mt-2">
-      <span className="text-[#8A8780]">{label}</span>
-      <span className={muted ? "num font-medium" : "num font-semibold"}>
-        {formatNaira(amount)}
-      </span>
-    </p>
   );
 }
 

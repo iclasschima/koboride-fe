@@ -7,7 +7,14 @@ import { ChevronLeft } from "lucide-react";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { StatusStepper } from "@/components/ui/StatusStepper";
 import { Button } from "@/components/ui/Button";
-import { formatDateTime, formatKm, formatNaira, shortId } from "@/lib/format";
+import {
+  formatDateTime,
+  formatDuration,
+  formatKm,
+  formatNaira,
+  shortId,
+  tripDurationSeconds,
+} from "@/lib/format";
 import {
   useAdminTrip,
   useAdminRiders,
@@ -41,6 +48,7 @@ export default function AdminOrderDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const riders = ridersList.filter((u) => u.approved);
+  const durationSeconds = trip ? tripDurationSeconds(trip) : null;
 
   if (isPending) {
     return <div className="h-64 animate-pulse rounded-xl bg-[#EEEDE8]" />;
@@ -101,7 +109,20 @@ export default function AdminOrderDetailPage() {
               {formatKm(trip.distanceKm ?? 0)}
             </span>
           </p>
+          {durationSeconds != null ? (
+            <p className="mt-2 text-[14px] text-[#8A8780]">
+              Time to complete{" "}
+              <span className="num font-semibold text-[#1A1A16]">
+                {formatDuration(durationSeconds)}
+              </span>
+            </p>
+          ) : null}
           {trip.notes ? <p className="mt-3 text-[14px]">{trip.notes}</p> : null}
+          {trip.status === "cancelled" && trip.cancelReason ? (
+            <p className="mt-3 text-[14px] text-[#8A8780]">
+              Cancel reason: {trip.cancelReason}
+            </p>
+          ) : null}
         </section>
         <section className="rounded-xl border border-black/6 bg-white p-5">
           <h2 className="text-[11px] font-semibold tracking-[0.07em] text-[#8A8780] uppercase">

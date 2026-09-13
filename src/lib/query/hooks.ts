@@ -7,7 +7,6 @@ import {
   type AdvanceRiderInput,
   autoAssignTrip,
   cancelOrder,
-  confirmCompletion,
   createTrip,
   getRiderMe,
   getRiderTrip,
@@ -15,11 +14,13 @@ import {
   listRiderAvailableJobs,
   listRiderEarnings,
   listRiderJobs,
-  listTrips,
+  listTripsPage,
 } from "@/lib/api/requests";
 import {
   addAdminRider,
   assignAdminOrder,
+  editAdminRider,
+  getAdminRider,
   createAdminOrder,
   deleteAdminOrder,
   getAdminCustomer,
@@ -30,7 +31,11 @@ import {
   markAdminPayoutPaid,
   overrideAdminStatus,
   removeAdminRider,
+  resetAdminCustomerCancels,
+  setAdminCustomerActive,
   setAdminRiderApproved,
+  getAdminSettings,
+  updateAdminSettings,
 } from "@/lib/api/admin";
 import { queryKeys } from "@/lib/query/keys";
 import {
@@ -43,10 +48,10 @@ import {
 export function useTrips(enabled = true) {
   return useQuery({
     queryKey: queryKeys.trips.list(),
-    queryFn: listTrips,
+    queryFn: listTripsPage,
     enabled,
     refetchInterval: (query) => {
-      const trips = query.state.data;
+      const trips = query.state.data?.trips;
       if (!trips?.some(isActiveTrip)) return false;
       return 8_000;
     },
@@ -62,7 +67,6 @@ export function useTrip(id: string, enabled = true) {
       const trip = query.state.data;
       if (!trip) return false;
       if (trip.status === "dispatching") return 4_000;
-      if (trip.status === "in_progress" && trip.riderPhase === "delivered") return 4_000;
       if (trip.status === "in_progress") return 12_000;
       return false;
     },
@@ -96,18 +100,8 @@ export function useAutoAssignMutation() {
 export function useCancelOrderMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (tripId: string) => cancelOrder(tripId),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: queryKeys.trips.all });
-      await qc.invalidateQueries({ queryKey: queryKeys.admin.all });
-    },
-  });
-}
-
-export function useConfirmCompletionMutation() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (tripId: string) => confirmCompletion(tripId),
+    mutationFn: (input: { tripId: string; reason: string; note?: string }) =>
+      cancelOrder(input.tripId, { reason: input.reason, note: input.note }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.trips.all });
       await qc.invalidateQueries({ queryKey: queryKeys.admin.all });
@@ -214,6 +208,14 @@ export function useAdminRiders() {
   });
 }
 
+export function useAdminRider(id: string) {
+  return useQuery({
+    queryKey: queryKeys.admin.rider(id),
+    queryFn: () => getAdminRider(id),
+    enabled: Boolean(id),
+  });
+}
+
 export function useAdminCustomers() {
   return useQuery({
     queryKey: queryKeys.admin.customers(),
@@ -293,9 +295,20 @@ export function useMarkPayoutPaidMutation() {
 export function useAddRiderMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { name: string; phone: string }) => addAdminRider(input),
+    mutationFn: addAdminRider,
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.admin.all });
+    },
+  });
+}
+
+export function useEditRiderMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: editAdminRider,
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: queryKeys.admin.all });
+      await qc.invalidateQueries({ queryKey: queryKeys.rider.all });
     },
   });
 }
@@ -311,6 +324,27 @@ export function useSetRiderApprovedMutation() {
   });
 }
 
+export function useSetCustomerActiveMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { customerId: string; active: boolean }) =>
+      setAdminCustomerActive(input.customerId, input.active),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: queryKeys.admin.all });
+    },
+  });
+}
+
+export function useResetCustomerCancelsMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (customerId: string) => resetAdminCustomerCancels(customerId),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: queryKeys.admin.all });
+    },
+  });
+}
+
 export function useRemoveRiderMutation() {
   const qc = useQueryClient();
   return useMutation({
@@ -318,6 +352,24 @@ export function useRemoveRiderMutation() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.admin.all });
       await qc.invalidateQueries({ queryKey: queryKeys.rider.all });
+    },
+  });
+}
+
+export function useAdminSettings() {
+  return useQuery({
+    queryKey: queryKeys.admin.settings(),
+    queryFn: getAdminSettings,
+  });
+}
+
+export function useUpdateAdminSettingsMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: updateAdminSettings,
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: queryKeys.admin.settings() });
+      await qc.invalidateQueries({ queryKey: queryKeys.trips.all });
     },
   });
 }

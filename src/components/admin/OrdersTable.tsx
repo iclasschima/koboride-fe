@@ -3,7 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { formatDateTime, formatKm, formatNaira, shortId } from "@/lib/format";
+import {
+  formatDateTime,
+  formatDuration,
+  formatKm,
+  formatNaira,
+  shortId,
+  tripDurationSeconds,
+} from "@/lib/format";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { StatusStepper } from "@/components/ui/StatusStepper";
 import { useDeleteAdminOrderMutation } from "@/lib/query/hooks";
@@ -68,8 +75,11 @@ export function OrdersTable({
                 </p>
               </div>
               <p className="mt-1 text-[12px] text-[#8A8780]">
-                {trip.riderName ?? "Unassigned"} · {formatKm(trip.distanceKm ?? 0)} ·{" "}
-                {formatDateTime(trip.createdAt)}
+                {trip.riderName ?? "Unassigned"} · {formatKm(trip.distanceKm ?? 0)}
+                {tripDurationSeconds(trip) != null
+                  ? ` · ${formatDuration(tripDurationSeconds(trip)!)}`
+                  : ""}{" "}
+                · {formatDateTime(trip.createdAt)}
               </p>
             </Link>
             <div className="mt-2 flex justify-end">
@@ -118,6 +128,9 @@ export function OrdersTable({
                   </Link>
                   <p className="mt-0.5 text-[12px] text-[#8A8780]">
                     {formatDateTime(trip.createdAt)}
+                    {tripDurationSeconds(trip) != null
+                      ? ` · ${formatDuration(tripDurationSeconds(trip)!)}`
+                      : ""}
                   </p>
                 </td>
                 <td className="px-4 py-3 align-top">

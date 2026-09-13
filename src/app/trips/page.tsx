@@ -9,7 +9,8 @@ import { useTrips } from "@/lib/query/hooks";
 
 export default function TripsPage() {
   const { authenticated, openAuth, ready } = useAuth();
-  const { data: trips = [], isPending } = useTrips(ready && authenticated);
+  const { data, isPending } = useTrips(ready && authenticated);
+  const trips = data?.trips ?? [];
 
   if (!ready) {
     return (
