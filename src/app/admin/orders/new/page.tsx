@@ -90,7 +90,7 @@ export default function AdminCreateOrderPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!pickup || !dropoff) {
-      setError("Pick a Yaba pickup and drop-off from search.");
+      setError("Pick a pickup and drop-off from search.");
       return;
     }
     if (distanceError) {
@@ -98,7 +98,7 @@ export default function AdminCreateOrderPage() {
       return;
     }
     if (!fee) {
-      setError("KoboRide only operates in Yaba.");
+      setError("This location is outside the KoboRide service area.");
       return;
     }
     setError("");
@@ -139,7 +139,7 @@ export default function AdminCreateOrderPage() {
         Create order
       </h1>
       <p className="mt-1 text-[14px] text-[#8A8780]">
-        Book a pickup for a customer. Same {formatNaira(YABA_FLAT_FEE_NGN)} Yaba fare.
+        Book a pickup for a customer. Same {formatNaira(YABA_FLAT_FEE_NGN)} flat fare.
       </p>
 
       <form
@@ -257,7 +257,7 @@ export default function AdminCreateOrderPage() {
           <p className="text-[14px]">
             Fare{" "}
             <span className="num font-semibold text-accent">
-              {fee ? formatNaira(fee) : "outside Yaba"}
+              {fee ? formatNaira(fee) : "outside service area"}
             </span>
           </p>
         ) : null}
@@ -346,7 +346,7 @@ function AddressSearch({
       <p className="mb-1 text-[12px] font-medium text-[#8A8780]">{label}</p>
       <input
         className={inputClass}
-        placeholder={`Search ${label.toLowerCase()} in Yaba`}
+        placeholder={`Search ${label.toLowerCase()}`}
         value={value && !open ? value.name : query}
         onChange={(e) => {
           onChange(null);

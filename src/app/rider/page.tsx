@@ -14,6 +14,7 @@ import {
   useRiderEarnings,
   useRiderMe,
 } from "@/lib/query/hooks";
+import { formatNaira } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import type { Trip } from "@/types/request";
 
@@ -34,6 +35,7 @@ export default function RiderHomePage() {
 
   const job = active[0];
   const todayTrips = earned.filter((trip) => isSameDay(trip.updatedAt));
+  const todayPayout = todayTrips.reduce((sum, trip) => sum + trip.payoutNgn, 0);
 
   if (mePending) {
     return <div className="h-full animate-pulse bg-[#E4DFD4]" />;
@@ -93,12 +95,15 @@ export default function RiderHomePage() {
           </span>
         </button>
 
-        <div className="mt-3 w-fit min-w-40 rounded-2xl bg-[#FAFAF7]/95 px-4 py-3 shadow-[0_8px_24px_rgba(15,61,46,0.1)]">
+        <div className="mt-3 w-fit min-w-44 rounded-2xl bg-[#FAFAF7]/95 px-4 py-3 shadow-[0_8px_24px_rgba(15,61,46,0.1)]">
           <p className="text-[11px] font-medium tracking-[0.06em] text-[#8A8780] uppercase">
             Today
           </p>
           <p className="num mt-1 text-[22px] font-semibold">
-            {todayTrips.length} {todayTrips.length === 1 ? "job" : "jobs"}
+            {formatNaira(todayPayout)}
+          </p>
+          <p className="mt-1 text-[12px] text-[#8A8780]">
+            {todayTrips.length} {todayTrips.length === 1 ? "job" : "jobs"} · your payout
           </p>
         </div>
       </div>
@@ -113,6 +118,9 @@ export default function RiderHomePage() {
             <p className="text-[12px] font-medium text-white/70">Your assigned order</p>
             <p className="font-display text-[16px] font-semibold">
               Continue to {job.dropoff}
+            </p>
+            <p className="mt-1 text-[13px] text-white/80">
+              Collect {formatNaira(job.feeNgn)} · you keep {formatNaira(job.payoutNgn)}
             </p>
           </button>
         ) : null}
@@ -183,6 +191,12 @@ function AwaitingRow({
     <li className="rounded-2xl bg-[#EEEDE8] px-4 py-3">
       <p className="truncate text-[14px] font-medium text-[#1A1A16]">{trip.pickup}</p>
       <p className="truncate text-[13px] text-[#8A8780]">→ {trip.dropoff}</p>
+      <p className="mt-2 text-[13px] text-[#5C5A54]">
+        Collect{" "}
+        <span className="num font-semibold text-[#1A1A16]">{formatNaira(trip.feeNgn)}</span>
+        {" · you keep "}
+        <span className="num font-semibold text-[#1A1A16]">{formatNaira(trip.payoutNgn)}</span>
+      </p>
       <div className="mt-2 flex justify-end">
         <Button
           type="button"

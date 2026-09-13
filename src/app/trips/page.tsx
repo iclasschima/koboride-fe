@@ -46,7 +46,7 @@ export default function TripsPage() {
       ) : trips.length === 0 ? (
         <EmptyState
           title="No orders yet"
-          description="Set pickup and drop-off to send a rider across Yaba."
+          description="Set pickup and drop-off to send a rider."
           action={
             <Link href="/">
               <Button size="md">Book a pickup</Button>

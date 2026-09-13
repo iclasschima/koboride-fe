@@ -1,21 +1,7 @@
 import { YABA_FLAT_FEE_NGN } from "@/types/request";
+import { isInActiveServiceArea } from "@/lib/zones";
 
-/** Yaba / Akoka / Onike / Adekunle / Jibowu. Keep in sync with koboride-be `src/lib/fare.ts`. */
-export const YABA_ZONE = {
-  minLat: 6.49,
-  maxLat: 6.528,
-  minLng: 3.362,
-  maxLng: 3.4,
-};
-
-export function isInYabaZone(lat: number, lng: number): boolean {
-  return (
-    lat >= YABA_ZONE.minLat &&
-    lat <= YABA_ZONE.maxLat &&
-    lng >= YABA_ZONE.minLng &&
-    lng <= YABA_ZONE.maxLng
-  );
-}
+export { isInActiveServiceArea };
 
 export function quoteFee(input: {
   pickupLat: number;
@@ -24,8 +10,8 @@ export function quoteFee(input: {
   dropoffLng: number;
 }): number {
   if (
-    !isInYabaZone(input.pickupLat, input.pickupLng) ||
-    !isInYabaZone(input.dropoffLat, input.dropoffLng)
+    !isInActiveServiceArea(input.pickupLat, input.pickupLng) ||
+    !isInActiveServiceArea(input.dropoffLat, input.dropoffLng)
   ) {
     return 0;
   }

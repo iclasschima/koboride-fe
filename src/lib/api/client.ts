@@ -9,6 +9,7 @@ export type SessionUser = {
   id: string;
   phone: string;
   name: string | null;
+  photoUrl?: string | null;
   isRider?: boolean;
 };
 
@@ -148,10 +149,11 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
   else if (rider) token = await riderToken();
   else if (token === undefined) token = getToken();
 
+  const isForm = typeof FormData !== "undefined" && init.body instanceof FormData;
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(isForm ? {} : { "Content-Type": "application/json" }),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(headers ?? {}),
     },
@@ -187,6 +189,13 @@ export const api = {
   get: <T>(path: string, opts?: RequestOpts) => request<T>(path, opts),
   post: <T>(path: string, body?: unknown, opts?: RequestOpts) =>
     request<T>(path, { ...opts, method: "POST", body: body === undefined ? undefined : JSON.stringify(body) }),
+  postForm: <T>(path: string, body: FormData, opts?: RequestOpts) =>
+    request<T>(path, {
+      ...opts,
+      method: "POST",
+      body,
+      headers: { ...(opts?.headers ?? {}) },
+    }),
   patch: <T>(path: string, body?: unknown, opts?: RequestOpts) =>
     request<T>(path, { ...opts, method: "PATCH", body: body === undefined ? undefined : JSON.stringify(body) }),
   delete: <T>(path: string, opts?: RequestOpts) =>

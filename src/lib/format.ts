@@ -4,6 +4,10 @@ export function formatKm(km: number): string {
   return Number.isInteger(rounded) ? `${rounded} km` : `${rounded.toFixed(1)} km`;
 }
 
+export function commissionNgn(feeNgn: number, payoutNgn: number): number {
+  return Math.max(0, Math.round(feeNgn - payoutNgn));
+}
+
 export function formatNaira(amount: number): string {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",

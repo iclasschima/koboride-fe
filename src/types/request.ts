@@ -29,11 +29,16 @@ export type Trip = {
   riderId: string | null;
   riderName: string | null;
   riderPhone: string | null;
+  riderPhotoUrl?: string | null;
   customerName: string | null;
   customerPhone: string | null;
   payoutNgn: number;
   payoutPaid: boolean;
   distanceKm: number;
+  deliveryPin?: string | null;
+  deliveryProof?: string | null;
+  deliveryProofNote?: string | null;
+  deliveryProofPhotoUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   autoConfirmInMs: number | null;

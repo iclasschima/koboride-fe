@@ -9,10 +9,12 @@ import {
   useState,
 } from "react";
 import {
+  api,
   getStoredRiderUser,
   getRiderToken,
   loginRider as apiLoginRider,
   logoutRider as apiLogoutRider,
+  setRiderSession,
 } from "@/lib/api/client";
 import type { User } from "@/types/user";
 
@@ -21,6 +23,7 @@ type RiderAuthContextValue = {
   authenticated: boolean;
   user: User | null;
   login: (phone: string) => Promise<User>;
+  updateUser: (patch: Partial<User>) => void;
   logout: () => void;
 };
 
@@ -32,12 +35,23 @@ export function RiderAuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
+    const token = getRiderToken();
     try {
       setUser(getStoredRiderUser());
-      setToken(getRiderToken());
+      setToken(token);
     } finally {
       setReady(true);
     }
+    if (!token) return;
+    void api
+      .get<{ user: User }>("/api/auth/me", { rider: true })
+      .then((data) => {
+        setUser(data.user);
+        setRiderSession(token, data.user);
+      })
+      .catch(() => {
+        /* keep the stored session if /me fails */
+      });
   }, []);
 
   const login = useCallback(async (phone: string) => {
@@ -53,15 +67,25 @@ export function RiderAuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
   }, []);
 
+  const updateUser = useCallback((patch: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      setRiderSession(getRiderToken(), next);
+      return next;
+    });
+  }, []);
+
   const value = useMemo(
     () => ({
       ready,
       authenticated: Boolean(token && user),
       user,
       login,
+      updateUser,
       logout,
     }),
-    [ready, token, user, login, logout],
+    [ready, token, user, login, updateUser, logout],
   );
 
   return <RiderAuthContext.Provider value={value}>{children}</RiderAuthContext.Provider>;

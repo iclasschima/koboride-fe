@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   acceptRiderJob,
   advanceRiderStatus,
+  type AdvanceRiderInput,
   autoAssignTrip,
   cancelOrder,
   confirmCompletion,
@@ -117,7 +118,8 @@ export function useConfirmCompletionMutation() {
 export function useAdvanceRiderMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (tripId: string) => advanceRiderStatus(tripId),
+    mutationFn: ({ tripId, ...input }: { tripId: string } & AdvanceRiderInput) =>
+      advanceRiderStatus(tripId, input),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.trips.all });
       await qc.invalidateQueries({ queryKey: queryKeys.rider.all });

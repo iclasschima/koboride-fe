@@ -54,7 +54,24 @@ export async function confirmCompletion(tripId: string): Promise<Trip> {
   return data.trip;
 }
 
-export async function advanceRiderStatus(tripId: string): Promise<Trip> {
+export type AdvanceRiderInput = {
+  pin?: string;
+  skipReason?: string;
+  photo?: File;
+};
+
+export async function advanceRiderStatus(
+  tripId: string,
+  input?: AdvanceRiderInput,
+): Promise<Trip> {
+  if (input?.photo || input?.skipReason || input?.pin) {
+    const body = new FormData();
+    if (input.pin) body.append("pin", input.pin);
+    if (input.skipReason) body.append("skipReason", input.skipReason);
+    if (input.photo) body.append("photo", input.photo);
+    const data = await api.postForm<{ trip: Trip }>(`/api/orders/${tripId}/status`, body, rider);
+    return data.trip;
+  }
   const data = await api.post<{ trip: Trip }>(`/api/orders/${tripId}/status`, undefined, rider);
   return data.trip;
 }
@@ -69,6 +86,15 @@ export type RiderMe = {
   approved: boolean;
   online: boolean;
 } | null;
+
+export async function uploadRiderPhoto(file: File): Promise<{
+  photoUrl: string;
+  user: { id: string; phone: string; name: string; photoUrl: string | null };
+}> {
+  const body = new FormData();
+  body.append("photo", file);
+  return api.postForm("/api/riders/photo", body, rider);
+}
 
 export async function getRiderMe(): Promise<RiderMe> {
   try {

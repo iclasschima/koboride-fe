@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft, Phone } from "lucide-react";
 import { CityMap, type MapMode } from "@/components/map/CityMap";
 import { AppSheet } from "@/components/ui/AppSheet";
+import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { StatusStepper } from "@/components/ui/StatusStepper";
 import { NotifyPrompt } from "@/components/notify/NotifyPrompt";
@@ -110,7 +111,7 @@ export default function TripDetailPage() {
   async function handleCancel() {
     setCancelError("");
     try {
-      await cancelOrder.mutateAsync(trip.id);
+      await cancelOrder.mutateAsync(tripId);
       router.push("/");
     } catch (err) {
       setAskCancel(false);
@@ -121,7 +122,6 @@ export default function TripDetailPage() {
   }
   const mapMode: MapMode =
     searching ? "searching" : trip.pickup && trip.dropoff ? "route" : "idle";
-  const initial = (trip.riderName ?? "R").trim().charAt(0).toUpperCase();
 
   return (
     <div className="relative h-full overflow-hidden bg-[#E4DFD4]">
@@ -171,15 +171,23 @@ export default function TripDetailPage() {
                 <span className="num font-semibold">{formatNaira(trip.feeNgn)}</span>
                 {" · pay cash to the rider"}
               </p>
+              {trip.deliveryPin ? (
+                <DeliveryPin
+                  pin={trip.deliveryPin}
+                  hint="The rider will ask for this code at drop-off."
+                />
+              ) : null}
             </>
           ) : null}
 
           {assigned && trip.riderName ? (
             <div>
               <div className="flex items-center gap-3">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand font-display text-[18px] font-semibold text-[#FAFAF7]">
-                  {initial}
-                </span>
+                <Avatar
+                  src={trip.riderPhotoUrl}
+                  name={trip.riderName}
+                  className="h-12 w-12 text-[18px]"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="font-display text-[17px] font-semibold">{trip.riderName}</p>
                   <p className="font-display text-[13px] font-medium text-[#8A8780]">
@@ -201,6 +209,12 @@ export default function TripDetailPage() {
                 <span className="num font-semibold">{formatNaira(trip.feeNgn)}</span>{" "}
                 cash to the rider
               </p>
+              {trip.deliveryPin ? (
+                <DeliveryPin
+                  pin={trip.deliveryPin}
+                  hint="Give this code to the rider when they hand over the package."
+                />
+              ) : null}
               {trip.customerRole === "receiver" && trip.senderName ? (
                 <p className="mt-2 text-[13px] text-[#8A8780]">
                   Coming from {trip.senderName}
@@ -294,6 +308,20 @@ export default function TripDetailPage() {
           </div>
         </div>
       </AppSheet>
+    </div>
+  );
+}
+
+function DeliveryPin({ pin, hint }: { pin: string; hint: string }) {
+  return (
+    <div className="mt-4 rounded-2xl bg-[#EEEDE8] px-4 py-3">
+      <p className="text-[11px] font-medium tracking-[0.06em] text-[#8A8780] uppercase">
+        Delivery PIN
+      </p>
+      <p className="num mt-1 text-[28px] font-semibold tracking-[0.28em] text-[#1A1A16]">
+        {pin}
+      </p>
+      <p className="mt-1 text-[13px] text-[#8A8780]">{hint}</p>
     </div>
   );
 }

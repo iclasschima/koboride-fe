@@ -110,6 +110,26 @@ export default function AdminOrderDetailPage() {
           <Row label="Fare" value={formatNaira(trip.feeNgn)} />
           <Row label="Rider payout" value={formatNaira(trip.payoutNgn)} />
           <Row label="Payout" value={trip.payoutPaid ? "Paid" : "Pending"} />
+          {trip.deliveryPin ? <Row label="Delivery PIN" value={trip.deliveryPin} /> : null}
+          {trip.deliveryProof ? (
+            <Row
+              label="Proof"
+              value={trip.deliveryProof === "pin" ? "PIN confirmed" : "PIN skipped"}
+            />
+          ) : null}
+          {trip.deliveryProofNote ? (
+            <p className="mt-2 text-[13px] text-[#8A8780]">{trip.deliveryProofNote}</p>
+          ) : null}
+          {trip.deliveryProofPhotoUrl ? (
+            <a
+              href={trip.deliveryProofPhotoUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-block text-[13px] font-medium text-brand"
+            >
+              View proof photo
+            </a>
+          ) : null}
         </section>
       </div>
 

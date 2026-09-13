@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/cn";
@@ -103,19 +104,26 @@ export default function AdminRidersPage() {
               {rows.map((rider) => (
                 <li key={rider.id} className="px-4 py-3">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate font-display text-[15px] font-semibold">
-                        {rider.name}
-                      </p>
-                      <a
-                        href={`tel:${rider.phone}`}
-                        className="mt-0.5 inline-block text-[13px] text-brand"
-                      >
-                        {rider.phone}
-                      </a>
-                      <p className="mt-1 text-[12px] text-[#8A8780]">
-                        Added {formatDate(rider.createdAt)}
-                      </p>
+                    <div className="flex min-w-0 items-start gap-3">
+                      <Avatar
+                        src={rider.photoUrl}
+                        name={rider.name}
+                        className="mt-0.5 h-10 w-10 shrink-0 text-[14px]"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate font-display text-[15px] font-semibold">
+                          {rider.name}
+                        </p>
+                        <a
+                          href={`tel:${rider.phone}`}
+                          className="mt-0.5 inline-block text-[13px] text-brand"
+                        >
+                          {rider.phone}
+                        </a>
+                        <p className="mt-1 text-[12px] text-[#8A8780]">
+                          Added {formatDate(rider.createdAt)}
+                        </p>
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -179,7 +187,16 @@ export default function AdminRidersPage() {
                 <tbody>
                   {rows.map((rider) => (
                     <tr key={rider.id} className="border-b border-black/5 last:border-0">
-                      <td className="px-4 py-3 font-semibold">{rider.name}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar
+                            src={rider.photoUrl}
+                            name={rider.name}
+                            className="h-8 w-8 shrink-0 text-[12px]"
+                          />
+                          <span className="font-semibold">{rider.name}</span>
+                        </div>
+                      </td>
                       <td className="px-4 py-3">{rider.phone}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-[#8A8780]">
                         {formatDate(rider.createdAt)}

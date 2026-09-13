@@ -4,6 +4,7 @@ export type User = {
   id: string;
   phone: string;
   name: string | null;
+  photoUrl?: string | null;
   isRider?: boolean;
 };
 
@@ -14,6 +15,7 @@ export type OpsUser = {
   role: UserRole;
   name: string;
   phone: string;
+  photoUrl?: string | null;
   approved: boolean;
   createdAt: string;
 };

@@ -15,8 +15,8 @@ import {
 } from "@/lib/api/places";
 import { ApiError } from "@/lib/api/client";
 import { estimateFare } from "@/lib/api/requests";
-import { COMING_SOON_AREAS, SEARCH_PLACES, type Place } from "@/lib/places";
-import { quoteFee, isInYabaZone } from "@/lib/fare";
+import { SEARCH_PLACES, type Place } from "@/lib/places";
+import { quoteFee, isInActiveServiceArea } from "@/lib/fare";
 import { formatNaira } from "@/lib/format";
 import { useCreateTripMutation } from "@/lib/query/hooks";
 import { activatePush, primePushPermission } from "@/lib/push";
@@ -215,10 +215,8 @@ export function BookingSheet({
     setSearchError("");
     try {
       const gps = await readGps();
-      if (!isInYabaZone(gps.lat, gps.lng)) {
-        setSearchError(
-          "You're outside Yaba. Surulere and other areas are coming soon.",
-        );
+      if (!isInActiveServiceArea(gps.lat, gps.lng)) {
+        setSearchError("This location is outside the KoboRide service area.");
         return;
       }
       const place = await reverseGeocode(gps.lat, gps.lng);
@@ -245,8 +243,8 @@ export function BookingSheet({
     setSearchError("");
     try {
       const place = await placeDetails(hit.id, sessionRef.current);
-      if (!isInYabaZone(place.lat, place.lng)) {
-        setSearchError("KoboRide is Yaba-only for now. Surulere and more are coming soon.");
+      if (!isInActiveServiceArea(place.lat, place.lng)) {
+        setSearchError("This location is outside the KoboRide service area.");
         return;
       }
       sessionRef.current = newSession();
@@ -349,11 +347,8 @@ export function BookingSheet({
         {step === "peek" ? (
           <div>
             <h1 className="font-display text-[22px] leading-tight font-semibold tracking-[-0.03em] text-[#1A1A16]">
-              Send something across Yaba
+              Send a package
             </h1>
-            <p className="mt-1 text-[13px] text-[#8A8780]">
-              Live in Yaba. Surulere, Gbagada and more coming soon.
-            </p>
             <div className="mt-4 grid grid-cols-2 gap-2.5">
               <button
                 type="button"
@@ -424,9 +419,6 @@ export function BookingSheet({
             <h2 className="font-display text-[20px] font-semibold tracking-[-0.03em]">
               Set locations
             </h2>
-            <p className="mt-1 text-[13px] text-[#8A8780]">
-              Pickup and drop-off in Yaba. Other areas coming soon.
-            </p>
             <div className="mt-4 space-y-2">
               <button
                 type="button"
@@ -495,14 +487,11 @@ export function BookingSheet({
             <h2 className="shrink-0 font-display text-[20px] font-semibold tracking-[-0.03em]">
               {searchTarget === "pickup" ? "Pickup" : "Drop-off"}
             </h2>
-            <p className="mt-1 shrink-0 text-[13px] text-[#8A8780]">
-              Yaba now. Surulere and other areas coming soon.
-            </p>
             <input
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search addresses in Yaba"
+              placeholder="Search an address"
               className="mt-4 h-12 w-full shrink-0 rounded-2xl bg-[#EEEDE8] px-4 text-[15px] outline-none placeholder:text-[#8A8780]"
             />
             {searchError ? (
@@ -550,29 +539,12 @@ export function BookingSheet({
                   </li>
                 ))
                 : null}
-              {showQuick ? (
-                <li className="py-3">
-                  <p className="text-[11px] font-semibold tracking-[0.06em] text-[#8A8780] uppercase">
-                    Coming soon
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {COMING_SOON_AREAS.map((area) => (
-                      <span
-                        key={area}
-                        className="rounded-full bg-[#EEEDE8] px-2.5 py-1 text-[12px] font-medium text-[#8A8780]"
-                      >
-                        {area}
-                      </span>
-                    ))}
-                  </div>
-                </li>
-              ) : null}
               {!showQuick && searching ? (
                 <li className="py-3 text-[13px] text-[#8A8780]">Searching…</li>
               ) : null}
               {!showQuick && !searching && googleHits.length === 0 && !searchError ? (
                 <li className="py-3 text-[13px] text-[#8A8780]">
-                  No places in Yaba. Try a nearby street or landmark.
+                  No places found. Try a nearby street or landmark.
                 </li>
               ) : null}
               {!showQuick
@@ -712,7 +684,7 @@ export function BookingSheet({
           <div>
             <FareNumber amount={fee} />
             <p className="mt-2 text-[13px] text-[#8A8780]">
-              Yaba flat rate ·{" "}
+              Flat rate ·{" "}
               <span className="num font-semibold">{formatNaira(fee)}</span>
               {" · pay cash to the rider"}
             </p>
