@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Bike, Check, ChevronLeft, Navigation, Package, Phone } from "lucide-react";
@@ -11,7 +11,7 @@ import { StatusStepper } from "@/components/ui/StatusStepper";
 import { Button } from "@/components/ui/Button";
 import { tapFeedback } from "@/lib/tapFeedback";
 import { SUPPORT_TEL_URL } from "@/lib/support";
-import { useAdvanceRiderMutation, useRiderTrip } from "@/lib/query/hooks";
+import { useAdvanceRiderMutation, useRequestDeliveryPinMutation, useRiderTrip } from "@/lib/query/hooks";
 import type { RiderPhase } from "@/types/request";
 
 const SKIP_REASONS = [
@@ -42,14 +42,30 @@ function atDropoff(phase: RiderPhase) {
 export default function RiderJobPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { data: trip, isPending, isError } = useRiderTrip(params.id);
-  const advance = useAdvanceRiderMutation();
   const [askPin, setAskPin] = useState(false);
   const [pin, setPin] = useState("");
+  const { data: trip, isPending, isError, refetch } = useRiderTrip(
+    params.id,
+    true,
+    askPin ? 2_000 : 12_000,
+  );
+  const advance = useAdvanceRiderMutation();
+  const requestPin = useRequestDeliveryPinMutation();
   const [skipOpen, setSkipOpen] = useState(false);
   const [skipReason, setSkipReason] = useState("");
   const [skipPhoto, setSkipPhoto] = useState<File | null>(null);
   const [proofError, setProofError] = useState("");
+
+  useEffect(() => {
+    if (!askPin) return;
+    void refetch();
+  }, [askPin, refetch]);
+
+  useEffect(() => {
+    if (!askPin) return;
+    const revealed = trip?.deliveryPin?.replace(/\D/g, "").slice(0, 4) ?? "";
+    if (revealed.length === 4) setPin(revealed);
+  }, [askPin, trip?.deliveryPin]);
 
   if (isPending) {
     return <div className="h-full animate-pulse bg-[#E4DFD4]" />;
@@ -139,11 +155,21 @@ export default function RiderJobPage() {
         {askPin && needsPin ? (
           <PinPanel
             pin={pin}
+            shared={Boolean(trip.deliveryPin && trip.deliveryPin.length === 4)}
+            asked={Boolean(trip.deliveryPinRequested)}
+            asking={requestPin.isPending}
             error={proofError}
             pending={advance.isPending}
             skipOpen={skipOpen}
             skipReason={skipReason}
             onPin={setPin}
+            onRequest={() => {
+              tapFeedback();
+              setProofError("");
+              void requestPin.mutateAsync(params.id).catch((err) => {
+                setProofError(err instanceof Error ? err.message : "Could not ask for the PIN");
+              });
+            }}
             onCancel={() => {
               setAskPin(false);
               setSkipOpen(false);
@@ -341,11 +367,15 @@ function SlideToAction({
 
 function PinPanel({
   pin,
+  shared,
+  asked,
+  asking,
   error,
   pending,
   skipOpen,
   skipReason,
   onPin,
+  onRequest,
   onCancel,
   onConfirm,
   onSkipOpen,
@@ -354,11 +384,15 @@ function PinPanel({
   onSkip,
 }: {
   pin: string;
+  shared: boolean;
+  asked: boolean;
+  asking: boolean;
   error: string;
   pending: boolean;
   skipOpen: boolean;
   skipReason: string;
   onPin: (value: string) => void;
+  onRequest: () => void;
   onCancel: () => void;
   onConfirm: () => void;
   onSkipOpen: () => void;
@@ -392,6 +426,16 @@ function PinPanel({
           {pending ? "…" : "OK"}
         </Button>
       </div>
+      {!shared ? (
+        <button
+          type="button"
+          className="mt-4 w-full text-center text-[14px] font-medium text-brand"
+          disabled={pending || asking}
+          onClick={onRequest}
+        >
+          {asking ? "Asking…" : asked ? "Ask again" : "Request code"}
+        </button>
+      ) : null}
       {!skipOpen ? (
         <button
           type="button"

@@ -68,6 +68,18 @@ export async function cancelOrder(
   return data.trip;
 }
 
+export async function revealDeliveryPin(tripId: string): Promise<Trip> {
+  const data = await api.post<{ trip: Trip }>(`/api/orders/${tripId}/reveal-pin`);
+  return data.trip;
+}
+
+export async function requestDeliveryPin(tripId: string): Promise<Trip> {
+  const data = await api.post<{ trip: Trip }>(`/api/orders/${tripId}/request-pin`, undefined, {
+    rider: true,
+  });
+  return data.trip;
+}
+
 export type AdvanceRiderInput = {
   pin?: string;
   skipReason?: string;

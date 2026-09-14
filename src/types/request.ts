@@ -36,6 +36,9 @@ export type Trip = {
   payoutPaid: boolean;
   distanceKm: number;
   deliveryPin?: string | null;
+  deliveryPinRevealed?: boolean;
+  deliveryPinRequested?: boolean;
+  deliveryPinRequestedAt?: string | null;
   requiresDeliveryPin?: boolean;
   deliveryProof?: string | null;
   deliveryProofNote?: string | null;

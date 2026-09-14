@@ -15,6 +15,8 @@ import {
   listRiderEarnings,
   listRiderJobs,
   listTripsPage,
+  requestDeliveryPin,
+  revealDeliveryPin,
 } from "@/lib/api/requests";
 import {
   addAdminRider,
@@ -77,7 +79,7 @@ export function useTrip(id: string, enabled = true) {
       const trip = query.state.data;
       if (!trip) return false;
       if (trip.status === "dispatching") return 4_000;
-      if (trip.status === "in_progress") return 12_000;
+      if (trip.status === "in_progress") return 4_000;
       return false;
     },
   });
@@ -102,6 +104,30 @@ export function useCancelOrderMutation() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.trips.all });
       await qc.invalidateQueries({ queryKey: queryKeys.admin.all });
+    },
+  });
+}
+
+export function useRevealDeliveryPinMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tripId: string) => revealDeliveryPin(tripId),
+    onSuccess: async (trip) => {
+      qc.setQueryData(queryKeys.trips.detail(trip.id), trip);
+      await qc.invalidateQueries({ queryKey: queryKeys.trips.all });
+      await qc.invalidateQueries({ queryKey: queryKeys.rider.all });
+    },
+  });
+}
+
+export function useRequestDeliveryPinMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tripId: string) => requestDeliveryPin(tripId),
+    onSuccess: async (trip) => {
+      qc.setQueryData(queryKeys.rider.job(trip.id), trip);
+      await qc.invalidateQueries({ queryKey: queryKeys.rider.all });
+      await qc.invalidateQueries({ queryKey: queryKeys.trips.all });
     },
   });
 }
@@ -132,7 +158,7 @@ export function useAcceptJobMutation() {
   });
 }
 
-export function useRiderTrip(id: string, enabled = true) {
+export function useRiderTrip(id: string, enabled = true, pollMs = 12_000) {
   return useQuery({
     queryKey: queryKeys.rider.job(id),
     queryFn: () => getRiderTrip(id),
@@ -141,7 +167,7 @@ export function useRiderTrip(id: string, enabled = true) {
       const trip = query.state.data;
       if (!trip) return false;
       if (trip.status === "dispatching" || trip.status === "in_progress") {
-        return 12_000;
+        return pollMs;
       }
       return false;
     },

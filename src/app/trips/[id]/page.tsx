@@ -12,7 +12,7 @@ import { StatusStepper } from "@/components/ui/StatusStepper";
 import { NotifyPrompt } from "@/components/notify/NotifyPrompt";
 import { ReportOrderButton } from "@/components/support/WhatsAppSupport";
 import { formatNaira, formatDuration, tripDurationSeconds } from "@/lib/format";
-import { useCancelOrderMutation, useTrip } from "@/lib/query/hooks";
+import { useCancelOrderMutation, useRevealDeliveryPinMutation, useTrip } from "@/lib/query/hooks";
 import { CANCEL_REASONS, canCustomerCancel, tripHeadline } from "@/types/request";
 import { ApiError } from "@/lib/api/client";
 
@@ -26,6 +26,7 @@ export default function TripDetailPage() {
 
   const { data: trip, isPending, isError } = useTrip(tripId);
   const cancelOrder = useCancelOrderMutation();
+  const revealPin = useRevealDeliveryPinMutation();
 
   const [snap, setSnap] = useState<number | string | null>(PEEK);
   const [askCancel, setAskCancel] = useState(false);
@@ -36,8 +37,12 @@ export default function TripDetailPage() {
   useEffect(() => {
     if (trip?.riderPhase === "delivered" || trip?.status === "completed") {
       setSnap(OPEN);
+      return;
     }
-  }, [trip?.riderPhase, trip?.status]);
+    if (trip?.deliveryPinRequested && !trip.deliveryPinRevealed) {
+      setSnap(OPEN);
+    }
+  }, [trip?.riderPhase, trip?.status, trip?.deliveryPinRequested, trip?.deliveryPinRevealed]);
 
   if (isPending) {
     return (
@@ -137,7 +142,9 @@ export default function TripDetailPage() {
               {trip.deliveryPin ? (
                 <DeliveryPin
                   pin={trip.deliveryPin}
-                  hint="The rider will ask for this code at drop-off."
+                  revealed={Boolean(trip.deliveryPinRevealed)}
+                  requested={Boolean(trip.deliveryPinRequested) && !trip.deliveryPinRevealed}
+                  revealing={revealPin.isPending}
                 />
               ) : null}
             </>
@@ -175,7 +182,10 @@ export default function TripDetailPage() {
               {trip.deliveryPin ? (
                 <DeliveryPin
                   pin={trip.deliveryPin}
-                  hint="Give this code to the rider when they hand over the package."
+                  revealed={Boolean(trip.deliveryPinRevealed)}
+                  requested={Boolean(trip.deliveryPinRequested) && !trip.deliveryPinRevealed}
+                  revealing={revealPin.isPending}
+                  onReveal={() => revealPin.mutate(tripId)}
                 />
               ) : null}
               {trip.customerRole === "receiver" && trip.senderName ? (
@@ -296,7 +306,25 @@ export default function TripDetailPage() {
   );
 }
 
-function DeliveryPin({ pin, hint }: { pin: string; hint: string }) {
+function DeliveryPin({
+  pin,
+  revealed,
+  requested,
+  revealing,
+  onReveal,
+}: {
+  pin: string;
+  revealed?: boolean;
+  requested?: boolean;
+  revealing?: boolean;
+  onReveal?: () => void;
+}) {
+  const hint = revealed
+    ? "Shared with the rider"
+    : requested
+      ? "Rider is waiting for this code"
+      : "Give this to the rider at drop-off";
+
   return (
     <div className="mt-4 rounded-2xl bg-[#EEEDE8] px-4 py-3">
       <p className="text-[11px] font-medium tracking-[0.06em] text-[#8A8780] uppercase">
@@ -306,6 +334,18 @@ function DeliveryPin({ pin, hint }: { pin: string; hint: string }) {
         {pin}
       </p>
       <p className="mt-1 text-[13px] text-[#8A8780]">{hint}</p>
+      {onReveal && !revealed ? (
+        <Button
+          type="button"
+          variant="secondary"
+          size="md"
+          className="mt-3 w-full bg-[#FAFAF7]"
+          disabled={revealing}
+          onClick={onReveal}
+        >
+          {revealing ? "Sharing…" : "Reveal code"}
+        </Button>
+      ) : null}
     </div>
   );
 }

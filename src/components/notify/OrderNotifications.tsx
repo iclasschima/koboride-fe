@@ -31,9 +31,11 @@ function CustomerOrderNotifications() {
   const tripId = pathname.match(/^\/trips\/([^/]+)$/)?.[1] ?? "";
   const { data: detail } = useTrip(tripId, Boolean(tripId) && authenticated && customerSurface);
   const seen = useRef(new Map<string, string>());
+  const seenPinReq = useRef(new Map<string, string>());
 
   useEffect(() => {
     seen.current.clear();
+    seenPinReq.current.clear();
   }, [user?.id]);
 
   useEffect(() => {
@@ -47,17 +49,33 @@ function CustomerOrderNotifications() {
       const prev = seen.current.get(trip.id);
       if (prev === undefined) {
         seen.current.set(trip.id, sig);
-        continue;
+      } else if (prev !== sig) {
+        seen.current.set(trip.id, sig);
+        const alert = customerOrderAlert(prev, trip);
+        if (alert) {
+          showOrderNotification({
+            ...alert,
+            url: `/trips/${trip.id}`,
+            tag: `order-${trip.id}-${sig}`,
+          });
+        }
       }
-      if (prev === sig) continue;
-      seen.current.set(trip.id, sig);
-      const alert = customerOrderAlert(prev, trip);
-      if (!alert) continue;
-      showOrderNotification({
-        ...alert,
-        url: `/trips/${trip.id}`,
-        tag: `order-${trip.id}-${sig}`,
-      });
+
+      const reqAt = trip.deliveryPinRequestedAt ?? "";
+      const prevReq = seenPinReq.current.get(trip.id);
+      if (prevReq === undefined) {
+        seenPinReq.current.set(trip.id, reqAt);
+      } else if (prevReq !== reqAt && reqAt && !trip.deliveryPinRevealed) {
+        seenPinReq.current.set(trip.id, reqAt);
+        showOrderNotification({
+          title: "Delivery PIN",
+          body: "Tap Reveal code",
+          url: `/trips/${trip.id}`,
+          tag: `pin-req-${trip.id}-${reqAt}`,
+        });
+      } else {
+        seenPinReq.current.set(trip.id, reqAt);
+      }
     }
   }, [authenticated, customerSurface, detail, trips]);
 
