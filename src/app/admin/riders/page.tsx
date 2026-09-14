@@ -6,19 +6,13 @@ import { ActiveToggle } from "@/components/admin/ActiveToggle";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDate } from "@/lib/format";
-import {
-  useAdminRiders,
-  useRemoveRiderMutation,
-  useSetRiderApprovedMutation,
-} from "@/lib/query/hooks";
+import { useAdminRiders, useSetRiderApprovedMutation } from "@/lib/query/hooks";
 
 export default function AdminRidersPage() {
   const { data: riders = [], isPending } = useAdminRiders();
   const setApproved = useSetRiderApprovedMutation();
-  const removeRider = useRemoveRiderMutation();
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
-  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -35,8 +29,7 @@ export default function AdminRidersPage() {
       </h1>
       <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <p className="text-[14px] text-[#8A8780]">
-          Add, activate, or remove riders. Photo, ID, and next of kin can be
-          added later.
+          Add or deactivate riders. Open a rider to edit docs or remove them.
         </p>
         <Link
           href="/admin/riders/new"
@@ -100,8 +93,11 @@ export default function AdminRidersPage() {
                     </Link>
                     <ActiveToggle
                       active={rider.active ?? rider.approved}
-                      pending={setApproved.isPending}
-                      onToggle={() =>
+                      pending={
+                        setApproved.isPending && setApproved.variables?.riderId === rider.id
+                      }
+                      onToggle={() => {
+                        setError("");
                         void setApproved
                           .mutateAsync({
                             riderId: rider.id,
@@ -112,30 +108,6 @@ export default function AdminRidersPage() {
                               err instanceof Error
                                 ? err.message
                                 : "Could not update rider",
-                            ),
-                          )
-                      }
-                    />
-                  </div>
-                  <div className="mt-2 flex justify-end">
-                    <RiderRemoveAction
-                      confirming={confirmId === rider.id}
-                      pending={removeRider.isPending}
-                      onAsk={() => {
-                        setError("");
-                        setConfirmId(rider.id);
-                      }}
-                      onCancel={() => setConfirmId(null)}
-                      onConfirm={() => {
-                        setError("");
-                        void removeRider
-                          .mutateAsync(rider.id)
-                          .then(() => setConfirmId(null))
-                          .catch((err) =>
-                            setError(
-                              err instanceof Error
-                                ? err.message
-                                : "Could not remove rider",
                             ),
                           );
                       }}
@@ -153,9 +125,6 @@ export default function AdminRidersPage() {
                     <th className="px-4 py-3 font-semibold">Phone</th>
                     <th className="px-4 py-3 font-semibold">Added</th>
                     <th className="px-4 py-3 font-semibold">Status</th>
-                    <th className="px-4 py-3 font-semibold">
-                      <span className="sr-only">Actions</span>
-                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -186,8 +155,12 @@ export default function AdminRidersPage() {
                       <td className="px-4 py-3">
                         <ActiveToggle
                           active={rider.active ?? rider.approved}
-                          pending={setApproved.isPending}
-                          onToggle={() =>
+                          pending={
+                            setApproved.isPending &&
+                            setApproved.variables?.riderId === rider.id
+                          }
+                          onToggle={() => {
+                            setError("");
                             void setApproved
                               .mutateAsync({
                                 riderId: rider.id,
@@ -198,30 +171,6 @@ export default function AdminRidersPage() {
                                   err instanceof Error
                                     ? err.message
                                     : "Could not update rider",
-                                ),
-                              )
-                          }
-                        />
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <RiderRemoveAction
-                          confirming={confirmId === rider.id}
-                          pending={removeRider.isPending}
-                          onAsk={() => {
-                            setError("");
-                            setConfirmId(rider.id);
-                          }}
-                          onCancel={() => setConfirmId(null)}
-                          onConfirm={() => {
-                            setError("");
-                            void removeRider
-                              .mutateAsync(rider.id)
-                              .then(() => setConfirmId(null))
-                              .catch((err) =>
-                                setError(
-                                  err instanceof Error
-                                    ? err.message
-                                    : "Could not remove rider",
                                 ),
                               );
                           }}
@@ -236,52 +185,5 @@ export default function AdminRidersPage() {
         )}
       </section>
     </div>
-  );
-}
-
-function RiderRemoveAction({
-  confirming,
-  pending,
-  onAsk,
-  onCancel,
-  onConfirm,
-}: {
-  confirming: boolean;
-  pending: boolean;
-  onAsk: () => void;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  if (confirming) {
-    return (
-      <div className="flex items-center justify-end gap-2">
-        <button
-          type="button"
-          className="text-[12px] font-semibold text-[#8A8780]"
-          disabled={pending}
-          onClick={onCancel}
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          className="text-[12px] font-semibold text-danger"
-          disabled={pending}
-          onClick={onConfirm}
-        >
-          {pending ? "Removing…" : "Confirm"}
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      className="text-[12px] font-semibold text-danger"
-      onClick={onAsk}
-    >
-      Remove
-    </button>
   );
 }

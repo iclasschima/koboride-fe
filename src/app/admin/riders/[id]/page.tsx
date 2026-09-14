@@ -2,25 +2,30 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { ActiveToggle } from "@/components/admin/ActiveToggle";
 import { OrdersTable } from "@/components/admin/OrdersTable";
 import { RiderVerificationForm } from "@/components/admin/RiderVerificationForm";
 import { Avatar } from "@/components/ui/Avatar";
+import { Button } from "@/components/ui/Button";
 import { formatDate, formatDuration, formatKm, formatNaira } from "@/lib/format";
 import {
   useAdminRider,
   useEditRiderMutation,
+  useRemoveRiderMutation,
   useSetRiderApprovedMutation,
 } from "@/lib/query/hooks";
 
 export default function AdminRiderDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const { data, isPending, isError } = useAdminRider(params.id);
   const editRider = useEditRiderMutation();
   const setApproved = useSetRiderApprovedMutation();
+  const removeRider = useRemoveRiderMutation();
   const [error, setError] = useState("");
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   if (isPending) {
     return <div className="h-64 animate-pulse rounded-xl bg-[#EEEDE8]" />;
@@ -98,11 +103,10 @@ export default function AdminRiderDetailPage() {
         <Stat
           label="Completed"
           value={String(rider.completedCount)}
-          hint={`${formatKm(rider.distanceKm)} · ${
-            rider.avgDurationSeconds != null
+          hint={`${formatKm(rider.distanceKm)} · ${rider.avgDurationSeconds != null
               ? formatDuration(rider.avgDurationSeconds)
               : "—"
-          } avg`}
+            } avg`}
         />
         <Stat label="Earned" value={formatNaira(rider.earnedNgn)} />
       </div>
@@ -139,6 +143,64 @@ export default function AdminRiderDetailPage() {
           emptyTitle="No trips yet"
           empty="When this rider takes a job, it will show here with payout."
         />
+      </section>
+
+      <section className="mt-8 rounded-xl border border-danger/20 bg-white p-5">
+        <h2 className="text-[11px] font-semibold tracking-[0.07em] text-danger uppercase">
+          Remove rider
+        </h2>
+        <p className="mt-3 text-[14px] text-[#8A8780]">
+          Permanently delete this rider. Deactivate them instead if they might
+          come back. Live jobs must be reassigned or finished first.
+        </p>
+        {confirmRemove ? (
+          <div className="mt-3 flex gap-2">
+            <Button
+              type="button"
+              className="flex-1"
+              size="md"
+              variant="secondary"
+              disabled={removeRider.isPending}
+              onClick={() => setConfirmRemove(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="flex-1"
+              size="md"
+              variant="danger"
+              disabled={removeRider.isPending}
+              onClick={() => {
+                setError("");
+                void removeRider
+                  .mutateAsync(rider.id)
+                  .then(() => router.push("/admin/riders"))
+                  .catch((err) =>
+                    setError(
+                      err instanceof Error ? err.message : "Could not remove rider",
+                    ),
+                  );
+              }}
+            >
+              {removeRider.isPending ? "Removing…" : "Confirm remove"}
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            className="mt-3"
+            size="md"
+            variant="danger"
+            onClick={() => {
+              setError("");
+              setConfirmRemove(true);
+            }}
+          >
+            Remove rider
+          </Button>
+        )}
+        {error ? <p className="mt-3 text-[13px] font-medium text-danger">{error}</p> : null}
       </section>
     </div>
   );
