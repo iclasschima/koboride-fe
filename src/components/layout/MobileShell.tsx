@@ -23,7 +23,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     (pathname === "/" || pathname === "/trips" || pathname === "/profile");
 
   const showRiderNav =
-    isRider && !isRiderJob && pathname !== "/rider/login" && riderAuthenticated;
+    isRider && pathname !== "/rider/login" && riderAuthenticated;
   const mapChrome =
     pathname === "/" ||
     pathname === "/rider" ||
@@ -43,11 +43,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       data-ptr-root
       className="kb-phone relative mx-auto flex w-full max-w-md flex-col overflow-hidden bg-[#FAFAF7] shadow-[0_0_80px_rgba(15,61,46,0.35)]"
     >
-      {mapChrome ? (
-        <div className="relative min-h-0 flex-1 overflow-hidden">{children}</div>
-      ) : (
-        <PullToRefresh className="relative min-h-0 flex-1">{children}</PullToRefresh>
-      )}
+      <PullToRefresh className="relative min-h-0 flex-1">{children}</PullToRefresh>
       {(showCustomerNav || showRiderNav) && !mapChrome ? (
         <AddToHomeScreenBanner />
       ) : null}

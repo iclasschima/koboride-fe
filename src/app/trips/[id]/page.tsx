@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft, Phone } from "lucide-react";
@@ -12,15 +12,9 @@ import { StatusStepper } from "@/components/ui/StatusStepper";
 import { NotifyPrompt } from "@/components/notify/NotifyPrompt";
 import { ReportOrderButton } from "@/components/support/WhatsAppSupport";
 import { formatNaira, formatDuration, tripDurationSeconds } from "@/lib/format";
-import {
-  useAutoAssignMutation,
-  useCancelOrderMutation,
-  useTrip,
-} from "@/lib/query/hooks";
+import { useCancelOrderMutation, useTrip } from "@/lib/query/hooks";
 import { CANCEL_REASONS, canCustomerCancel, tripHeadline } from "@/types/request";
 import { ApiError } from "@/lib/api/client";
-
-const SEARCH_MS = 4_000;
 
 const PEEK = 0.38;
 const OPEN = 0.78;
@@ -31,8 +25,6 @@ export default function TripDetailPage() {
   const tripId = params.id;
 
   const { data: trip, isPending, isError } = useTrip(tripId);
-  const autoAssign = useAutoAssignMutation();
-  const assignOnce = useRef<string | null>(null);
   const cancelOrder = useCancelOrderMutation();
 
   const [snap, setSnap] = useState<number | string | null>(PEEK);
@@ -46,20 +38,6 @@ export default function TripDetailPage() {
       setSnap(OPEN);
     }
   }, [trip?.riderPhase, trip?.status]);
-
-  useEffect(() => {
-    if (!trip || trip.status !== "dispatching") return;
-    if (assignOnce.current === trip.id) return;
-    const elapsed = Date.now() - new Date(trip.createdAt).getTime();
-    const wait = Math.max(0, SEARCH_MS - elapsed);
-    const timer = window.setTimeout(() => {
-      assignOnce.current = trip.id;
-      void autoAssign.mutateAsync(trip.id).catch(() => {
-        assignOnce.current = null;
-      });
-    }, wait);
-    return () => window.clearTimeout(timer);
-  }, [autoAssign, trip]);
 
   if (isPending) {
     return (

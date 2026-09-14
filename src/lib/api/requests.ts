@@ -63,11 +63,6 @@ export async function cancelOrder(
   return data.trip;
 }
 
-export async function autoAssignTrip(tripId: string): Promise<Trip> {
-  const data = await api.post<{ trip: Trip }>(`/api/orders/${tripId}/auto-assign`);
-  return data.trip;
-}
-
 export type AdvanceRiderInput = {
   pin?: string;
   skipReason?: string;

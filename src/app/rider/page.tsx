@@ -129,7 +129,7 @@ export default function RiderHomePage() {
             job ? "mt-4" : "mt-1",
           )}
         >
-          Awaiting a rider
+          Jobs waiting
         </h2>
         {awaiting.length === 0 ? (
           <p className="mt-2 text-[14px] text-[#8A8780]">

@@ -7,6 +7,32 @@ import { cn } from "@/lib/cn";
 
 const THRESHOLD = 64;
 const MAX_PULL = 96;
+const SKIP_PULL =
+  "input, textarea, select, [contenteditable='true'], [role='slider'], [data-no-ptr]";
+
+function isScrollableY(el: HTMLElement) {
+  const { overflowY } = getComputedStyle(el);
+  if (overflowY !== "auto" && overflowY !== "scroll" && overflowY !== "overlay") {
+    return false;
+  }
+  return el.scrollHeight - el.clientHeight > 1;
+}
+
+function canPullFrom(target: EventTarget | null, root: HTMLElement) {
+  if (!(target instanceof Node)) return false;
+  const start = target instanceof Element ? target : target.parentElement;
+  if (!start || !root.contains(start)) return false;
+  if (start.closest(SKIP_PULL)) return false;
+
+  let el: HTMLElement | null =
+    start instanceof HTMLElement ? start : start.parentElement;
+  while (el && root.contains(el)) {
+    if (isScrollableY(el) && el.scrollTop > 1) return false;
+    if (el === root) break;
+    el = el.parentElement;
+  }
+  return true;
+}
 
 export function PullToRefresh({
   children,
@@ -39,14 +65,9 @@ export function PullToRefresh({
     if (!el) return;
     const root = (el.closest("[data-ptr-root]") ?? el) as HTMLElement;
 
-    function atTop() {
-      return (el?.scrollTop ?? 0) <= 0;
-    }
-
     function onStart(e: TouchEvent) {
       if (refreshingRef.current) return;
-      if (!root.contains(e.target as Node)) return;
-      if (!atTop()) {
+      if (!canPullFrom(e.target, root)) {
         pulling.current = false;
         return;
       }
@@ -56,7 +77,7 @@ export function PullToRefresh({
 
     function onMove(e: TouchEvent) {
       if (!pulling.current || refreshingRef.current) return;
-      if (!atTop()) {
+      if (!canPullFrom(e.target, root)) {
         pulling.current = false;
         setPullDistance(0);
         return;
@@ -120,10 +141,13 @@ export function PullToRefresh({
   return (
     <div
       ref={scroller}
-      className={cn("overflow-y-auto overscroll-y-contain", className)}
+      className={cn(
+        "flex h-full min-h-0 flex-col overflow-y-auto overscroll-y-contain",
+        className,
+      )}
     >
       <div
-        className="flex items-end justify-center overflow-hidden"
+        className="flex shrink-0 items-end justify-center overflow-hidden"
         style={{ height: pull }}
         aria-hidden={!refreshing}
       >
@@ -149,7 +173,7 @@ export function PullToRefresh({
           Release to refresh
         </p>
       ) : null}
-      {children}
+      <div className="relative min-h-0 flex-1">{children}</div>
     </div>
   );
 }

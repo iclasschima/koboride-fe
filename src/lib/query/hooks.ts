@@ -5,7 +5,6 @@ import {
   acceptRiderJob,
   advanceRiderStatus,
   type AdvanceRiderInput,
-  autoAssignTrip,
   cancelOrder,
   createTrip,
   getRiderMe,
@@ -79,19 +78,6 @@ export function useCreateTripMutation() {
     mutationFn: (input: CreateTripInput) => createTrip(input),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.trips.all });
-      await qc.invalidateQueries({ queryKey: queryKeys.admin.all });
-    },
-  });
-}
-
-export function useAutoAssignMutation() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (tripId: string) => autoAssignTrip(tripId),
-    onSuccess: async (trip) => {
-      qc.setQueryData(queryKeys.trips.detail(trip.id), trip);
-      await qc.invalidateQueries({ queryKey: queryKeys.trips.all });
-      await qc.invalidateQueries({ queryKey: queryKeys.rider.all });
       await qc.invalidateQueries({ queryKey: queryKeys.admin.all });
     },
   });

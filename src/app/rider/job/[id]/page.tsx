@@ -1,51 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, Navigation, Phone } from "lucide-react";
+import { Bike, Check, ChevronLeft, Navigation, Package, Phone } from "lucide-react";
 import { CityMap } from "@/components/map/CityMap";
 import { ReportOrderButton } from "@/components/support/WhatsAppSupport";
-import { Button } from "@/components/ui/Button";
+import { Avatar } from "@/components/ui/Avatar";
 import { StatusStepper } from "@/components/ui/StatusStepper";
+import { Button } from "@/components/ui/Button";
+import { tapFeedback } from "@/lib/tapFeedback";
+import { SUPPORT_TEL_URL } from "@/lib/support";
 import { useAdvanceRiderMutation, useRiderTrip } from "@/lib/query/hooks";
 import type { RiderPhase } from "@/types/request";
 
 const SKIP_REASONS = [
-  "Receiver phone died",
-  "Receiver not present",
-  "Receiver cannot open the app",
+  "Phone died",
+  "Not around",
+  "No app",
 ];
 
-const NEXT_LABEL: Record<RiderPhase, string> = {
-  accepted: "En route to pickup",
-  en_route_pickup: "Item collected",
-  collected: "En route to drop-off",
-  en_route_dropoff: "Delivered",
-  delivered: "Done",
+const ACTION: Record<
+  RiderPhase,
+  { label: string; pidgin: string; icon: typeof Bike }
+> = {
+  accepted: { label: "I'm heading there", pidgin: "I don enter road", icon: Bike },
+  en_route_pickup: { label: "Mark as collected", pidgin: "I don collect am", icon: Package },
+  collected: { label: "Mark as delivered", pidgin: "I don deliver", icon: Check },
+  en_route_dropoff: { label: "Mark as delivered", pidgin: "I don deliver", icon: Check },
+  delivered: { label: "Done", pidgin: "E don finish", icon: Check },
 };
 
-const CONFIRM: Partial<
-  Record<RiderPhase, { title: string; body: string; confirm: string }>
-> = {
-  en_route_pickup: {
-    title: "Item collected?",
-    body: "Only continue if you have the package with you.",
-    confirm: "Yes, collected",
-  },
-  en_route_dropoff: {
-    title: "Mark as delivered?",
-    body: "Only continue if you have handed this to the receiver.",
-    confirm: "Yes, delivered",
-  },
-};
+function atPickup(phase: RiderPhase) {
+  return phase === "accepted" || phase === "en_route_pickup";
+}
+
+function atDropoff(phase: RiderPhase) {
+  return phase === "collected" || phase === "en_route_dropoff";
+}
 
 export default function RiderJobPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { data: trip, isPending, isError } = useRiderTrip(params.id);
   const advance = useAdvanceRiderMutation();
-  const [askConfirm, setAskConfirm] = useState(false);
+  const [askPin, setAskPin] = useState(false);
   const [pin, setPin] = useState("");
   const [skipOpen, setSkipOpen] = useState(false);
   const [skipReason, setSkipReason] = useState("");
@@ -81,17 +80,21 @@ export default function RiderJobPage() {
   }
 
   const phase = trip.riderPhase ?? "accepted";
+  const pickup = atPickup(phase);
+  const dropoff = atDropoff(phase);
   const needsPin = Boolean(trip.requiresDeliveryPin ?? trip.deliveryPin);
-  const confirm = CONFIRM[phase];
-  const navTo =
-    phase === "accepted" || phase === "en_route_pickup" ? trip.pickup : trip.dropoff;
-  const maps = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(navTo)}`;
+  const action = ACTION[phase];
+  const place = pickup ? trip.pickup : trip.dropoff;
+  const maps = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place)}`;
 
   async function next(input?: { pin?: string; skipReason?: string; photo?: File }) {
     setProofError("");
     try {
-      const updated = await advance.mutateAsync({ tripId: params.id, ...input });
-      setAskConfirm(false);
+      let updated = await advance.mutateAsync({ tripId: params.id, ...input });
+      if (updated.status === "in_progress" && updated.riderPhase === "collected") {
+        updated = await advance.mutateAsync({ tripId: params.id });
+      }
+      setAskPin(false);
       setSkipOpen(false);
       if (updated.status === "completed" || updated.riderPhase === "delivered") {
         router.push("/rider");
@@ -101,13 +104,10 @@ export default function RiderJobPage() {
     }
   }
 
-  function onAdvanceClick() {
-    if (phase === "en_route_dropoff" && needsPin) {
-      setAskConfirm(true);
-      return;
-    }
-    if (confirm && !askConfirm) {
-      setAskConfirm(true);
+  function onAction() {
+    tapFeedback();
+    if (dropoff && needsPin) {
+      setAskPin(true);
       return;
     }
     void next();
@@ -115,13 +115,7 @@ export default function RiderJobPage() {
 
   return (
     <div className="relative flex h-full flex-col bg-[#FAFAF7]">
-      <div
-        className={
-          askConfirm
-            ? "relative h-[22vh] min-h-32 shrink-0"
-            : "relative h-[42vh] min-h-52 shrink-0"
-        }
-      >
+      <div className="relative min-h-36 flex-1">
         <CityMap
           className="absolute inset-0"
           mode="route"
@@ -141,231 +135,382 @@ export default function RiderJobPage() {
         />
       </div>
 
-      <div className="relative z-10 -mt-5 min-h-0 flex-1 overflow-y-auto rounded-t-[28px] bg-[#FAFAF7] px-5 pt-4 pb-[max(3rem,calc(env(safe-area-inset-bottom)+2rem))]">
-        {!askConfirm ? (
+      <div className="relative z-10 -mt-5 max-h-[72%] shrink-0 overflow-y-auto rounded-t-[28px] bg-[#FAFAF7] px-5 pt-4 pb-2">
+        {askPin && needsPin ? (
+          <PinPanel
+            pin={pin}
+            error={proofError}
+            pending={advance.isPending}
+            skipOpen={skipOpen}
+            skipReason={skipReason}
+            onPin={setPin}
+            onCancel={() => {
+              setAskPin(false);
+              setSkipOpen(false);
+              setProofError("");
+            }}
+            onConfirm={() => {
+              tapFeedback();
+              void next({ pin });
+            }}
+            onSkipOpen={() => setSkipOpen(true)}
+            onSkipReason={setSkipReason}
+            onSkipPhoto={setSkipPhoto}
+            onSkip={() => {
+              tapFeedback();
+              void next({
+                skipReason: skipReason.trim(),
+                photo: skipPhoto ?? undefined,
+              });
+            }}
+          />
+        ) : (
           <>
             <StatusStepper trip={trip} />
-            <div className="mt-5">
-              <h1 className="font-display text-[24px] font-semibold tracking-[-0.03em]">
-                {phase === "accepted" || phase === "en_route_pickup"
-                  ? "Pickup"
-                  : "Drop-off"}
-              </h1>
-              <p className="mt-2 text-[15px] text-[#8A8780]">
-                {phase === "accepted" || phase === "en_route_pickup"
-                  ? trip.pickup
-                  : trip.dropoff}
-              </p>
-              <ContactRow
-                label={
-                  phase === "accepted" || phase === "en_route_pickup"
-                    ? "Pickup from"
-                    : "Deliver to"
-                }
-                name={
-                  phase === "accepted" || phase === "en_route_pickup"
-                    ? trip.senderName
-                    : trip.receiverName
-                }
-                phone={
-                  phase === "accepted" || phase === "en_route_pickup"
-                    ? trip.senderPhone
-                    : trip.receiverPhone
-                }
-              />
-              {trip.notes ? (
-                <p className="mt-3 rounded-2xl bg-[#EEEDE8] px-4 py-3 text-[14px]">
-                  {trip.notes}
-                </p>
-              ) : null}
-            </div>
-          </>
-        ) : null}
-
-        <div className={askConfirm ? "space-y-2" : "mt-4 space-y-2"}>
-          {phase !== "delivered" && !askConfirm ? (
-            <a href={maps} target="_blank" rel="noreferrer">
-              <Button className="w-full" variant="secondary">
-                <Navigation className="mr-2 h-4 w-4" />
-                Open Google Maps
-              </Button>
-            </a>
-          ) : null}
-          {phase === "en_route_dropoff" && askConfirm && needsPin ? (
-            <div className="rounded-[24px] bg-[#EEEDE8] px-4 py-4">
-              <p className="font-display text-[18px] font-semibold tracking-[-0.02em]">
-                Enter delivery PIN
-              </p>
-              <p className="mt-1 text-[14px] text-[#8A8780]">
-                Ask the receiver for the 4-digit code on their tracking screen.
-              </p>
-              <input
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={4}
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                placeholder="••••"
-                className="num mt-3 h-12 w-full rounded-2xl bg-[#FAFAF7] px-4 text-center text-[22px] tracking-[0.4em] outline-none"
-              />
-              {proofError ? (
-                <p className="mt-2 text-[13px] font-medium text-danger">{proofError}</p>
-              ) : null}
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full"
-                  disabled={advance.isPending}
-                  onClick={() => {
-                    setAskConfirm(false);
-                    setSkipOpen(false);
-                    setProofError("");
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  className="w-full"
-                  disabled={advance.isPending || pin.length !== 4}
-                  onClick={() => void next({ pin })}
-                >
-                  {advance.isPending ? "Checking…" : "Confirm PIN"}
-                </Button>
-              </div>
-              {!skipOpen ? (
-                <button
-                  type="button"
-                  className="mt-3 w-full text-center text-[13px] font-medium text-[#8A8780]"
-                  onClick={() => setSkipOpen(true)}
-                >
-                  Cannot collect PIN
-                </button>
-              ) : (
-                <div className="mt-4 border-t border-black/8 pt-3">
-                  <p className="text-[13px] font-medium text-[#1A1A16]">
-                    Why can you not collect the PIN?
-                  </p>
-                  <p className="mt-1 text-[12px] text-[#8A8780]">
-                    Use this only if the receiver’s phone died, they stepped out, or they
-                    cannot show the code. This is logged on the order.
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {SKIP_REASONS.map((reason) => (
-                      <button
-                        key={reason}
-                        type="button"
-                        className="rounded-full bg-[#FAFAF7] px-2.5 py-1 text-[12px] font-medium text-[#1A1A16]"
-                        onClick={() => setSkipReason(reason)}
-                      >
-                        {reason}
-                      </button>
-                    ))}
-                  </div>
-                  <textarea
-                    value={skipReason}
-                    onChange={(e) => setSkipReason(e.target.value)}
-                    rows={3}
-                    placeholder="Add a short note"
-                    className="mt-2 w-full rounded-2xl bg-[#FAFAF7] px-3 py-2 text-[14px] outline-none"
-                  />
-                  <label className="mt-2 block text-[13px] text-[#8A8780]">
-                    Photo (optional)
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="mt-1 block w-full text-[13px]"
-                      onChange={(e) => setSkipPhoto(e.target.files?.[0] ?? null)}
-                    />
-                  </label>
-                  <Button
-                    type="button"
-                    className="mt-3 w-full"
-                    disabled={advance.isPending || skipReason.trim().length < 8}
-                    onClick={() =>
-                      void next({
-                        skipReason: skipReason.trim(),
-                        photo: skipPhoto ?? undefined,
-                      })
-                    }
-                  >
-                    {advance.isPending ? "Saving…" : "Mark delivered without PIN"}
-                  </Button>
-                </div>
-              )}
-            </div>
-          ) : phase !== "delivered" && askConfirm && confirm ? (
-            <div className="rounded-[24px] bg-[#EEEDE8] px-4 py-4">
-              <p className="font-display text-[18px] font-semibold tracking-[-0.02em]">
-                {confirm.title}
-              </p>
-              <p className="mt-1 text-[14px] text-[#8A8780]">{confirm.body}</p>
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full"
-                  disabled={advance.isPending}
-                  onClick={() => setAskConfirm(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  className="w-full"
-                  disabled={advance.isPending}
-                  onClick={() => void next()}
-                >
-                  {advance.isPending ? "Updating…" : confirm.confirm}
-                </Button>
-              </div>
-            </div>
-          ) : phase !== "delivered" ? (
-            <Button
-              className="w-full"
-              disabled={advance.isPending}
-              onClick={onAdvanceClick}
+            <p className="mt-4 font-display text-[13px] font-semibold tracking-[0.08em] text-[#8A8780] uppercase">
+              {pickup ? "Pickup" : "Drop-off"}
+            </p>
+            <a
+              href={maps}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 flex items-center gap-3"
             >
-              {advance.isPending ? "Updating…" : NEXT_LABEL[phase]}
-            </Button>
-          ) : null}
-        </div>
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#EEEDE8] text-brand">
+                <Navigation className="h-6 w-6" strokeWidth={2.2} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="font-display block text-[20px] leading-tight font-semibold tracking-[-0.03em]">
+                  {place}
+                </span>
+                <span className="mt-0.5 block text-[15px] font-medium text-brand">
+                  Show direction
+                </span>
+              </span>
+            </a>
+            <JobDetails
+              personLabel={pickup ? "Who to meet" : "Deliver to"}
+              name={pickup ? trip.senderName : trip.receiverName}
+              phone={pickup ? trip.senderPhone : trip.receiverPhone}
+              notes={trip.notes}
+              pickupFallbackPhone={dropoff ? trip.senderPhone : ""}
+            />
+
+            {phase !== "delivered" ? (
+              <>
+                <SlideToAction
+                  key={phase}
+                  icon={action.icon}
+                  label={advance.isPending ? "…" : action.label}
+                  pidgin={action.pidgin}
+                  disabled={advance.isPending}
+                  onComplete={onAction}
+                />
+                <a
+                  href={SUPPORT_TEL_URL}
+                  className="mt-2 block py-1 text-center text-[13px] font-medium text-[#8A8780]"
+                >
+                  Call support
+                </a>
+              </>
+            ) : null}
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-function ContactRow({
+function SlideToAction({
+  icon: Icon,
   label,
+  pidgin,
+  disabled,
+  onComplete,
+}: {
+  icon: typeof Bike;
+  label: string;
+  pidgin: string;
+  disabled?: boolean;
+  onComplete: () => void;
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [x, setX] = useState(0);
+  const [maxTravel, setMaxTravel] = useState(0);
+  const xRef = useRef(0);
+  const dragging = useRef(false);
+  const startX = useRef(0);
+  const startOffset = useRef(0);
+  const maxX = useRef(0);
+
+  const thumbX = disabled ? 0 : x;
+
+  function setOffset(next: number) {
+    xRef.current = next;
+    setX(next);
+  }
+
+  function travel() {
+    const width = trackRef.current?.clientWidth ?? 0;
+    return Math.max(0, width - 68);
+  }
+
+  function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (disabled) return;
+    dragging.current = true;
+    startX.current = event.clientX;
+    startOffset.current = 0;
+    setOffset(0);
+    const max = travel();
+    maxX.current = max;
+    setMaxTravel(max);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function onPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    if (!dragging.current) return;
+    const next = Math.min(
+      maxX.current,
+      Math.max(0, startOffset.current + event.clientX - startX.current),
+    );
+    setOffset(next);
+  }
+
+  function complete() {
+    maxX.current = travel();
+    setOffset(maxX.current);
+    tapFeedback();
+    onComplete();
+  }
+
+  function onPointerUp() {
+    if (!dragging.current) return;
+    dragging.current = false;
+    const max = maxX.current || travel();
+    if (max > 0 && xRef.current >= max * 0.85) {
+      complete();
+      return;
+    }
+    setOffset(0);
+  }
+
+  const fade = Math.max(0, 1 - thumbX / 140);
+
+  return (
+    <div
+      ref={trackRef}
+      className="relative mt-3 h-[4.75rem] w-full overflow-hidden rounded-[28px] bg-accent"
+    >
+      <div
+        className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-16"
+        style={{ opacity: fade }}
+      >
+        <span className="font-display text-center text-[18px] font-bold tracking-[-0.03em]">
+          {label}
+        </span>
+        <span className="text-[13px] font-medium text-[#1A1A16]/70">{pidgin}</span>
+      </div>
+      <div
+        role="slider"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={maxTravel ? Math.round((thumbX / maxTravel) * 100) : 0}
+        aria-label={label}
+        aria-disabled={disabled}
+        tabIndex={disabled ? -1 : 0}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onKeyDown={(event) => {
+          if (disabled) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            maxX.current = travel();
+            complete();
+          }
+        }}
+        className="absolute top-1.5 left-1.5 z-10 flex h-14 w-14 cursor-grab touch-none items-center justify-center rounded-full bg-[#FAFAF7] text-[#1A1A16] shadow-[0_4px_16px_rgba(15,61,46,0.16)] active:cursor-grabbing"
+        style={{ transform: `translateX(${thumbX}px)` }}
+      >
+        <Icon className="h-7 w-7" strokeWidth={2.4} />
+      </div>
+    </div>
+  );
+}
+
+function PinPanel({
+  pin,
+  error,
+  pending,
+  skipOpen,
+  skipReason,
+  onPin,
+  onCancel,
+  onConfirm,
+  onSkipOpen,
+  onSkipReason,
+  onSkipPhoto,
+  onSkip,
+}: {
+  pin: string;
+  error: string;
+  pending: boolean;
+  skipOpen: boolean;
+  skipReason: string;
+  onPin: (value: string) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+  onSkipOpen: () => void;
+  onSkipReason: (value: string) => void;
+  onSkipPhoto: (file: File | null) => void;
+  onSkip: () => void;
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <p className="font-display text-[22px] font-semibold tracking-[-0.03em]">PIN</p>
+      <input
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        maxLength={4}
+        value={pin}
+        onChange={(e) => onPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+        placeholder="••••"
+        className="num mt-4 h-16 w-full rounded-2xl bg-[#EEEDE8] px-4 text-center text-[28px] tracking-[0.4em] outline-none"
+      />
+      {error ? <p className="mt-2 text-[16px] font-medium text-danger">{error}</p> : null}
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <Button type="button" variant="secondary" className="w-full" disabled={pending} onClick={onCancel}>
+          Back
+        </Button>
+        <Button
+          type="button"
+          className="w-full"
+          disabled={pending || pin.length !== 4}
+          onClick={onConfirm}
+        >
+          {pending ? "…" : "OK"}
+        </Button>
+      </div>
+      {!skipOpen ? (
+        <button
+          type="button"
+          className="mt-4 w-full text-center text-[14px] font-medium text-[#8A8780]"
+          onClick={onSkipOpen}
+        >
+          No PIN
+        </button>
+      ) : (
+        <div className="mt-4">
+          <div className="flex flex-wrap gap-1.5">
+            {SKIP_REASONS.map((reason) => (
+              <button
+                key={reason}
+                type="button"
+                className="rounded-full bg-[#EEEDE8] px-3 py-2 text-[14px] font-medium"
+                onClick={() => onSkipReason(reason)}
+              >
+                {reason}
+              </button>
+            ))}
+          </div>
+          <textarea
+            value={skipReason}
+            onChange={(e) => onSkipReason(e.target.value)}
+            rows={2}
+            placeholder="Note"
+            className="mt-2 w-full rounded-2xl bg-[#EEEDE8] px-3 py-2 text-[16px] outline-none"
+          />
+          <input
+            type="file"
+            accept="image/*"
+            className="mt-2 block w-full text-[14px]"
+            onChange={(e) => onSkipPhoto(e.target.files?.[0] ?? null)}
+          />
+          <Button
+            type="button"
+            className="mt-3 w-full"
+            disabled={pending || skipReason.trim().length < 8}
+            onClick={onSkip}
+          >
+            {pending ? "…" : "Done"}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function JobDetails({
+  personLabel,
   name,
   phone,
+  notes,
+  pickupFallbackPhone,
 }: {
-  label: string;
+  personLabel: string;
   name: string;
   phone: string;
+  notes: string;
+  pickupFallbackPhone?: string;
 }) {
-  if (!name && !phone) return null;
+  const item = notes.trim() || "Not specified";
+  const showPickupFallback = Boolean(pickupFallbackPhone);
+
   return (
-    <div className="mt-3 flex items-center gap-3 rounded-2xl bg-[#EEEDE8] px-4 py-3">
-      <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-medium tracking-[0.06em] text-[#8A8780] uppercase">
-          {label}
-        </p>
-        <p className="font-display truncate text-[15px] font-semibold">
-          {name || "No name"}
-        </p>
-        {phone ? <p className="text-[13px] text-[#8A8780]">{phone}</p> : null}
-      </div>
-      {phone ? (
-        <a
-          href={`tel:${phone}`}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#FAFAF7] text-brand"
-          aria-label={`Call ${label}`}
-        >
-          <Phone className="h-5 w-5" />
-        </a>
+    <div className="mt-4 shrink-0 overflow-hidden rounded-[22px] bg-[#EEEDE8]">
+      {name || phone ? (
+        <div className="px-3.5 py-3">
+          <div className="flex items-center gap-3">
+            <Avatar
+              name={name || "?"}
+              className="h-12 w-12 shrink-0 text-[18px]"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] font-semibold tracking-[0.06em] text-[#8A8780] uppercase">
+                {personLabel}
+              </p>
+              <p className="font-display truncate text-[18px] leading-tight font-semibold">
+                {name || "No name"}
+              </p>
+            </div>
+            {phone ? (
+              <a
+                href={`tel:${phone}`}
+                className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-[#FAFAF7] px-3.5 text-brand"
+              >
+                <Phone className="h-5 w-5" strokeWidth={2.2} />
+                <span className="text-[15px] font-semibold">Call</span>
+              </a>
+            ) : null}
+          </div>
+          {showPickupFallback ? (
+            <a
+              href={`tel:${pickupFallbackPhone}`}
+              className="mt-2.5 block text-[13px] font-medium text-brand"
+            >
+              Not answering? Call pickup person
+            </a>
+          ) : null}
+        </div>
       ) : null}
+      <div
+        className={`flex items-start gap-3 px-3.5 py-3 ${
+          name || phone ? "border-t border-[#1A1A16]/8" : ""
+        }`}
+      >
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#FAFAF7] text-brand">
+          <Package className="h-6 w-6" strokeWidth={2.2} />
+        </span>
+        <div className="min-w-0 flex-1 pt-0.5">
+          <p className="text-[12px] font-semibold tracking-[0.06em] text-[#8A8780] uppercase">
+            Package details
+          </p>
+          <p className="mt-0.5 text-[16px] leading-snug font-medium text-[#1A1A16]">
+            {item}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

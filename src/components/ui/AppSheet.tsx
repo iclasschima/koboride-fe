@@ -69,6 +69,7 @@ export function AppSheet({
         type="button"
         className="flex h-7 w-full shrink-0 items-center justify-center"
         aria-label="Drag sheet"
+        data-no-ptr
         onPointerDown={(e) => {
           dragging.current = true;
           setLiveDrag(true);

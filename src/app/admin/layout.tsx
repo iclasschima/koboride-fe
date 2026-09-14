@@ -30,7 +30,11 @@ export default function AdminLayout({
   }
 
   if (isLogin) {
-    return <div className="min-h-dvh bg-[#F4F2EC]">{children}</div>;
+    return (
+      <div data-ptr-root className="min-h-dvh bg-[#F4F2EC]">
+        <PullToRefresh className="min-h-dvh">{children}</PullToRefresh>
+      </div>
+    );
   }
 
   if (!authed) {
