@@ -1,3 +1,5 @@
+import { applyClientRefreshNonce, CLIENT_REFRESH_HEADER } from "@/lib/clientRefresh";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const TOKEN_KEY = "koboride.token";
 const USER_KEY = "koboride.user";
@@ -167,6 +169,7 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
       ...(headers ?? {}),
     },
   });
+  applyClientRefreshNonce(res.headers.get(CLIENT_REFRESH_HEADER));
 
   const data = (await res.json().catch(() => ({}))) as {
     error?: string;

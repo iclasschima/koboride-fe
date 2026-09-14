@@ -1,5 +1,10 @@
 import { ApiError, api } from "@/lib/api/client";
+import type { ClientAppStatus } from "@/types/user";
 import type { CreateTripInput, Trip } from "@/types/request";
+
+export async function getClientAppStatus(): Promise<ClientAppStatus> {
+  return api.get<ClientAppStatus>("/api/app", { token: null });
+}
 
 const rider = { rider: true as const };
 

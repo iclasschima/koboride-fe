@@ -195,7 +195,7 @@ export async function getAdminSettings(): Promise<PlatformSettings> {
 }
 
 export async function updateAdminSettings(
-  input: PlatformSettings,
+  input: Partial<PlatformSettings> & { bumpClientRefresh?: true },
 ): Promise<PlatformSettings> {
   return api.patch<PlatformSettings>("/api/admin/settings", input, admin);
 }

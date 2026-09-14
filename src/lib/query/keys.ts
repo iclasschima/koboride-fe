@@ -1,4 +1,7 @@
 export const queryKeys = {
+  app: {
+    status: () => ["app", "status"] as const,
+  },
   trips: {
     all: ["trips"] as const,
     list: () => [...queryKeys.trips.all, "list"] as const,

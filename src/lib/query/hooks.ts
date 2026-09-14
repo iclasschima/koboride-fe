@@ -7,6 +7,7 @@ import {
   type AdvanceRiderInput,
   cancelOrder,
   createTrip,
+  getClientAppStatus,
   getRiderMe,
   getRiderTrip,
   getTrip,
@@ -43,6 +44,16 @@ import {
   type RiderPhase,
   type TripStatus,
 } from "@/types/request";
+
+export function useClientAppStatus(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.app.status(),
+    queryFn: getClientAppStatus,
+    enabled,
+    refetchOnWindowFocus: true,
+    staleTime: 60_000,
+  });
+}
 
 export function useTrips(enabled = true) {
   return useQuery({
@@ -355,6 +366,7 @@ export function useUpdateAdminSettingsMutation() {
     mutationFn: updateAdminSettings,
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.admin.settings() });
+      await qc.invalidateQueries({ queryKey: queryKeys.app.status() });
       await qc.invalidateQueries({ queryKey: queryKeys.trips.all });
     },
   });

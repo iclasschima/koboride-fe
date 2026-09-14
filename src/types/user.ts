@@ -81,4 +81,9 @@ export type AdminCustomer = {
 export type PlatformSettings = {
   maxActiveOrders: number;
   platformCutPercent: number;
+  clientRefreshNonce: number;
+};
+
+export type ClientAppStatus = {
+  nonce: number;
 };

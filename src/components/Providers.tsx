@@ -9,6 +9,7 @@ import { AutoActivatePush } from "@/components/notify/AutoActivatePush";
 import { OrderNotifications } from "@/components/notify/OrderNotifications";
 import { PushBanner } from "@/components/notify/PushBanner";
 import { RiderAutoSwitch } from "@/components/layout/RiderAutoSwitch";
+import { ForceAppReload } from "@/components/ForceAppReload";
 import { PwaInstallProvider } from "@/components/pwa/PwaInstallProvider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -17,6 +18,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <AuthProvider>
         <RiderAuthProvider>
           <PwaInstallProvider>
+            <ForceAppReload />
             <MobileShell>{children}</MobileShell>
             <RiderAutoSwitch />
             <AutoActivatePush />
