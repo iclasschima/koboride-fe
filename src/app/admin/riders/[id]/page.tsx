@@ -109,6 +109,15 @@ export default function AdminRiderDetailPage() {
             } avg`}
         />
         <Stat label="Earned" value={formatNaira(rider.earnedNgn)} />
+        <Stat
+          label="Dropped jobs"
+          value={String(rider.droppedCount ?? 0)}
+          hint={
+            rider.droppedCount
+              ? `${rider.droppedRecentCount ?? 0} this week${rider.lastDropReason ? ` · last: ${rider.lastDropReason}` : ""}`
+              : undefined
+          }
+        />
       </div>
 
       {rider.docsComplete === false ? (

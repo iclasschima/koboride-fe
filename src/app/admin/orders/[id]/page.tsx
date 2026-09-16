@@ -23,7 +23,12 @@ import {
   useMarkPayoutPaidMutation,
   useOverrideStatusMutation,
 } from "@/lib/query/hooks";
-import { tripHeadline, type Trip, type TripStatus } from "@/types/request";
+import {
+  tripHeadline,
+  type RiderPhase,
+  type Trip,
+  type TripStatus,
+} from "@/types/request";
 import type { OpsUser } from "@/types/user";
 
 const OVERRIDE: TripStatus[] = [
@@ -32,6 +37,10 @@ const OVERRIDE: TripStatus[] = [
   "completed",
   "cancelled",
 ];
+
+function dropPhaseLabel(phase: RiderPhase | null): string {
+  return phase === "en_route_pickup" ? "on the way to pickup" : "after accepting";
+}
 
 export default function AdminOrderDetailPage() {
   const params = useParams<{ id: string }>();
@@ -160,6 +169,30 @@ export default function AdminOrderDetailPage() {
         <PersonCard label="Pickup from" name={trip.senderName} phone={trip.senderPhone} />
         <PersonCard label="Deliver to" name={trip.receiverName} phone={trip.receiverPhone} />
       </div>
+
+      {trip.releases && trip.releases.length > 0 ? (
+        <section className="mt-4 rounded-xl border border-black/6 bg-white p-5">
+          <h2 className="text-[11px] font-semibold tracking-[0.07em] text-[#8A8780] uppercase">
+            Dropped by riders ({trip.releases.length})
+          </h2>
+          <ul className="mt-3 space-y-2">
+            {trip.releases.map((row) => (
+              <li key={row.id} className="text-[14px]">
+                <Link
+                  href={`/admin/riders/${row.riderId}`}
+                  className="font-semibold text-brand"
+                >
+                  {row.riderName ?? "Rider"}
+                </Link>
+                <span className="text-[#8A8780]">
+                  {" · "}
+                  {row.reason} · {dropPhaseLabel(row.phase)} · {formatDateTime(row.at)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {error ? (
         <p className="mt-4 text-[13px] font-medium text-danger">{error}</p>

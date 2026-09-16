@@ -57,6 +57,10 @@ export type AdminRiderDetail = OpsUser & {
   distanceKm: number;
   avgDurationSeconds?: number | null;
   lastJobAt: string | null;
+  droppedCount?: number;
+  droppedRecentCount?: number;
+  lastDroppedAt?: string | null;
+  lastDropReason?: string | null;
 };
 
 export type AdminCustomer = {
