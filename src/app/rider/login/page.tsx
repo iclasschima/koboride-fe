@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { NigeriaPhoneField } from "@/components/auth/NigeriaPhoneField";
 import { Button } from "@/components/ui/Button";
 import { useRiderAuth } from "@/lib/auth/RiderAuthProvider";
+import { NG_PHONE_ERROR, normalizeNgPhone } from "@/lib/phone";
 import { activatePush, primePushPermission } from "@/lib/push";
-
-const inputClass =
-  "h-12 w-full rounded-2xl bg-[#EEEDE8] px-3.5 text-[15px] text-[#1A1A16] outline-none placeholder:text-[#8A8780]";
 
 export default function RiderLoginPage() {
   const router = useRouter();
@@ -15,14 +14,19 @@ export default function RiderLoginPage() {
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const e164 = normalizeNgPhone(phone);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!e164) {
+      setError(NG_PHONE_ERROR);
+      return;
+    }
     setBusy(true);
     setError("");
     try {
       primePushPermission();
-      await login(phone);
+      await login(e164);
       void activatePush("rider");
       router.replace("/rider");
     } catch (err) {
@@ -45,20 +49,18 @@ export default function RiderLoginPage() {
       </p>
 
       <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-3">
-        <input
-          className={inputClass}
-          placeholder="Phone number"
-          inputMode="tel"
-          autoComplete="tel"
+        <NigeriaPhoneField
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          required
+          onChange={(next) => {
+            setPhone(next);
+            if (error) setError("");
+          }}
           disabled={busy}
         />
         {error ? (
           <p className="text-[13px] font-medium text-danger">{error}</p>
         ) : null}
-        <Button type="submit" disabled={busy || !phone.trim()}>
+        <Button type="submit" disabled={busy || !e164}>
           {busy ? "Signing in…" : "Sign in"}
         </Button>
       </form>

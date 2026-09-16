@@ -2,21 +2,22 @@
 
 import { useEffect, useId, useState } from "react";
 import { usePathname } from "next/navigation";
+import { NigeriaPhoneField } from "@/components/auth/NigeriaPhoneField";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { Button } from "@/components/ui/Button";
+import { NG_PHONE_ERROR, normalizeNgPhone } from "@/lib/phone";
 import { activatePush, primePushPermission } from "@/lib/push";
 
 const inputClass =
   "h-12 w-full rounded-2xl bg-[#EEEDE8] px-3.5 text-[15px] text-[#1A1A16] outline-none placeholder:text-[#8A8780]";
 
+const titleClass =
+  "text-center font-display text-[26px] font-bold tracking-[-0.03em] text-[#1A1A16]";
+
 export function AuthModal() {
   const pathname = usePathname();
-  const { authOpen, closeAuth, login, saveProfile } = useAuth();
+  const { authOpen, closeAuth } = useAuth();
   const titleId = useId();
-  const [phone, setPhone] = useState("");
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!authOpen) return;
@@ -27,40 +28,8 @@ export function AuthModal() {
     };
   }, [authOpen]);
 
-  useEffect(() => {
-    if (authOpen === "login") setError("");
-  }, [authOpen]);
-
   if (!authOpen) return null;
   if (pathname.startsWith("/admin") || pathname.startsWith("/rider")) return null;
-
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      primePushPermission();
-      const user = await login(phone);
-      void activatePush(user.isRider ? "rider" : "customer");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not sign in");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleProfile(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      await saveProfile({ name });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save profile");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center">
@@ -80,57 +49,104 @@ export function AuthModal() {
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[#D5D7DB]" aria-hidden />
 
         {authOpen === "profile" ? (
-          <form onSubmit={handleProfile} className="flex flex-col gap-3">
-            <h2
-              id={titleId}
-              className="text-center font-display text-[26px] font-bold tracking-[-0.03em] text-[#1A1A16]"
-            >
-              Finish your profile
-            </h2>
-            <p className="mb-1 text-center text-[14px] text-[#8A8780]">
-              So riders know who they&apos;re picking up for.
-            </p>
-            <input
-              className={inputClass}
-              placeholder="Full name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              disabled={busy}
-            />
-            {error ? <p className="text-[13px] font-medium text-danger">{error}</p> : null}
-            <Button type="submit" disabled={busy || !name.trim()}>
-              {busy ? "Saving…" : "Continue"}
-            </Button>
-          </form>
+          <ProfileForm titleId={titleId} />
         ) : (
-          <form onSubmit={handleLogin} className="flex flex-col gap-3">
-            <h2
-              id={titleId}
-              className="text-center font-display text-[26px] font-bold tracking-[-0.03em] text-[#1A1A16]"
-            >
-              Sign in to KoboRide
-            </h2>
-            <p className="mb-1 text-center text-[14px] text-[#8A8780]">
-              Continue with a phone number.
-            </p>
-            <input
-              className={inputClass}
-              placeholder="Phone number"
-              inputMode="tel"
-              autoComplete="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-              disabled={busy}
-            />
-            {error ? <p className="text-[13px] font-medium text-danger">{error}</p> : null}
-            <Button type="submit" disabled={busy || !phone.trim()}>
-              {busy ? "Signing in…" : "Continue"}
-            </Button>
-          </form>
+          <LoginForm titleId={titleId} />
         )}
       </div>
     </div>
+  );
+}
+
+function LoginForm({ titleId }: { titleId: string }) {
+  const { login } = useAuth();
+  const [phone, setPhone] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const e164 = normalizeNgPhone(phone);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!e164) {
+      setError(NG_PHONE_ERROR);
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      primePushPermission();
+      const user = await login(e164);
+      void activatePush(user.isRider ? "rider" : "customer");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not sign in");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-3">
+      <h2 id={titleId} className={titleClass}>
+        Sign in to KoboRide
+      </h2>
+      <p className="mb-1 text-center text-[14px] text-[#8A8780]">
+        Continue with a phone number.
+      </p>
+      <NigeriaPhoneField
+        value={phone}
+        onChange={(next) => {
+          setPhone(next);
+          if (error) setError("");
+        }}
+        disabled={busy}
+      />
+      {error ? <p className="text-[13px] font-medium text-danger">{error}</p> : null}
+      <Button type="submit" disabled={busy || !e164}>
+        {busy ? "Signing in…" : "Continue"}
+      </Button>
+    </form>
+  );
+}
+
+function ProfileForm({ titleId }: { titleId: string }) {
+  const { saveProfile } = useAuth();
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await saveProfile({ name });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save profile");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-3">
+      <h2 id={titleId} className={titleClass}>
+        Finish your profile
+      </h2>
+      <p className="mb-1 text-center text-[14px] text-[#8A8780]">
+        So riders know who they&apos;re picking up for.
+      </p>
+      <input
+        className={inputClass}
+        placeholder="Full name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        required
+        disabled={busy}
+      />
+      {error ? <p className="text-[13px] font-medium text-danger">{error}</p> : null}
+      <Button type="submit" disabled={busy || !name.trim()}>
+        {busy ? "Saving…" : "Continue"}
+      </Button>
+    </form>
   );
 }
