@@ -9,7 +9,7 @@ import {
   type PushAppRole,
 } from "@/lib/push";
 import { usePwaInstall } from "@/components/pwa/PwaInstallProvider";
-import { Share, Smartphone } from "lucide-react";
+import { InstallAppButton } from "@/components/pwa/AddToHomeScreen";
 
 export function EnableNotifications({
   role,
@@ -61,16 +61,7 @@ export function EnableNotifications({
           <p className="text-[13px] font-medium text-[#1A1A16]">
             Add KoboRide to your Home Screen first, then turn on alerts from here.
           </p>
-          <ol className="mt-2 space-y-1.5 text-[13px] text-[#5C5A54]">
-            <li className="flex gap-2">
-              <Share className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-              Tap Share in Safari
-            </li>
-            <li className="flex gap-2">
-              <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
-              Tap Add to Home Screen, open the app, then come back here
-            </li>
-          </ol>
+          <InstallAppButton className="mt-2.5 w-full" size="md" />
         </div>
       );
     }

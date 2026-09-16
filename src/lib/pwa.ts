@@ -38,6 +38,24 @@ export function isIosDevice(): boolean {
   return iPhone || iPadOs;
 }
 
+export function isAndroidDevice(): boolean {
+  if (typeof window === "undefined") return false;
+  return /Android/i.test(window.navigator.userAgent);
+}
+
+/**
+ * Links opened from WhatsApp, Instagram and friends run in a webview that cannot
+ * install anything, so the user has to reopen the page in a real browser first.
+ */
+export function isInAppBrowser(): boolean {
+  if (typeof window === "undefined") return false;
+  const ua = window.navigator.userAgent;
+  if (/FBAN|FBAV|Instagram|Line|Twitter|TikTok|Snapchat|Pinterest/i.test(ua)) return true;
+  if (/WhatsApp/i.test(ua)) return true;
+  // Android webviews announce themselves with "wv"; Chrome proper never does.
+  return /\bwv\b/i.test(ua);
+}
+
 export function a2hsDismissed(): boolean {
   if (typeof window === "undefined") return false;
   try {

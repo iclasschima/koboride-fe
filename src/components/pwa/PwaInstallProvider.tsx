@@ -12,6 +12,8 @@ import {
   a2hsAlreadyInstalled,
   a2hsDismissed,
   dismissA2hs,
+  isAndroidDevice,
+  isInAppBrowser,
   isIosDevice,
   isStandaloneApp,
   markA2hsInstalled,
@@ -27,6 +29,10 @@ type PwaInstallContextValue = {
   ready: boolean;
   installed: boolean;
   ios: boolean;
+  /** Phone or tablet, where installing is worth offering even without a prompt. */
+  mobile: boolean;
+  /** Inside a WhatsApp/Instagram style webview, where installing is impossible. */
+  inAppBrowser: boolean;
   canPrompt: boolean;
   install: () => Promise<boolean>;
   dismiss: () => void;
@@ -39,12 +45,16 @@ export function PwaInstallProvider({ children }: { children: React.ReactNode }) 
   const [ready, setReady] = useState(false);
   const [installed, setInstalled] = useState(false);
   const [ios, setIos] = useState(false);
+  const [android, setAndroid] = useState(false);
+  const [inAppBrowser, setInAppBrowser] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
     setInstalled(a2hsAlreadyInstalled());
     setIos(isIosDevice());
+    setAndroid(isAndroidDevice());
+    setInAppBrowser(isInAppBrowser());
     setDismissed(a2hsDismissed());
     setReady(true);
 
@@ -88,17 +98,20 @@ export function PwaInstallProvider({ children }: { children: React.ReactNode }) 
     setDismissed(true);
   }, []);
 
+  const mobile = ios || android;
   const value = useMemo<PwaInstallContextValue>(
     () => ({
       ready,
       installed,
       ios,
+      mobile,
+      inAppBrowser,
       canPrompt: Boolean(deferred),
       install,
       dismiss,
-      showBanner: ready && !installed && !dismissed && (ios || Boolean(deferred)),
+      showBanner: ready && !installed && !dismissed && (mobile || Boolean(deferred)),
     }),
-    [deferred, dismissed, install, installed, ios, ready],
+    [deferred, dismissed, inAppBrowser, install, installed, ios, mobile, ready],
   );
 
   return <PwaInstallContext.Provider value={value}>{children}</PwaInstallContext.Provider>;
