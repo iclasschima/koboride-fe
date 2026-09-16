@@ -13,7 +13,7 @@ import { NotifyPrompt } from "@/components/notify/NotifyPrompt";
 import { ReportOrderButton } from "@/components/support/WhatsAppSupport";
 import { formatNaira, formatDuration, tripDurationSeconds } from "@/lib/format";
 import { useCancelOrderMutation, useRevealDeliveryPinMutation, useTrip } from "@/lib/query/hooks";
-import { CANCEL_REASONS, canCustomerCancel, tripHeadline } from "@/types/request";
+import { CANCEL_REASONS, canCustomerCancel, isActiveTrip, tripHeadline } from "@/types/request";
 import { ApiError } from "@/lib/api/client";
 
 const PEEK = 0.38;
@@ -116,7 +116,7 @@ export default function TripDetailPage() {
         activeSnapPoint={snap}
         setActiveSnapPoint={setSnap}
       >
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-1">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-1">
           {searching || assigned || trip.status === "completed" ? (
             <div className="mb-4">
               <StatusStepper trip={trip} />
@@ -212,94 +212,107 @@ export default function TripDetailPage() {
               ) : null}
             </div>
           ) : null}
+        </div>
 
-          <div className="pt-5">
-            {showCancel ? (
-              <div>
-                {askCancel ? (
-                  <div className="space-y-3">
-                    <p className="text-center text-[13px] text-[#8A8780]">
-                      {assigned
-                        ? "The rider is already on the way. Why are you cancelling?"
-                        : "Why are you cancelling?"}
-                    </p>
-                    <div className="flex flex-wrap justify-center gap-1.5">
-                      {CANCEL_REASONS.map((reason) => (
-                        <button
-                          key={reason}
-                          type="button"
-                          className={
-                            cancelReason === reason
-                              ? "rounded-full bg-brand px-2.5 py-1 text-[12px] font-semibold text-white"
-                              : "rounded-full bg-[#FAFAF7] px-2.5 py-1 text-[12px] font-medium text-[#1A1A16]"
-                          }
-                          onClick={() => setCancelReason(reason)}
-                        >
-                          {reason}
-                        </button>
-                      ))}
-                    </div>
-                    {cancelReason === "Other" ? (
-                      <textarea
-                        value={cancelNote}
-                        onChange={(e) => setCancelNote(e.target.value)}
-                        rows={2}
-                        placeholder="Add a short note"
-                        className="w-full rounded-2xl bg-[#FAFAF7] px-3 py-2 text-[14px] outline-none"
-                      />
-                    ) : null}
-                    <Button
-                      className="w-full"
-                      disabled={
-                        cancelOrder.isPending ||
-                        !cancelReason ||
-                        (cancelReason === "Other" && cancelNote.trim().length < 4)
-                      }
-                      onClick={() => void handleCancel()}
-                    >
-                      {cancelOrder.isPending ? "Cancelling…" : "Yes, cancel"}
-                    </Button>
-                    <button
-                      type="button"
-                      className="w-full text-center text-[14px] font-medium text-[#8A8780]"
-                      disabled={cancelOrder.isPending}
-                      onClick={() => {
-                        setAskCancel(false);
-                        setCancelReason("");
-                        setCancelNote("");
-                      }}
-                    >
-                      Keep waiting
-                    </button>
+        <div className="shrink-0 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
+          {showCancel ? (
+            <div>
+              {askCancel ? (
+                <div className="space-y-3">
+                  <p className="text-center text-[13px] text-[#8A8780]">
+                    {assigned
+                      ? "The rider is already on the way. Why are you cancelling?"
+                      : "Why are you cancelling?"}
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-1.5">
+                    {CANCEL_REASONS.map((reason) => (
+                      <button
+                        key={reason}
+                        type="button"
+                        className={
+                          cancelReason === reason
+                            ? "rounded-full bg-brand px-2.5 py-1 text-[12px] font-semibold text-white"
+                            : "rounded-full bg-[#EEEDE8] px-2.5 py-1 text-[12px] font-medium text-[#1A1A16]"
+                        }
+                        onClick={() => setCancelReason(reason)}
+                      >
+                        {reason}
+                      </button>
+                    ))}
                   </div>
-                ) : (
+                  {cancelReason === "Other" ? (
+                    <textarea
+                      value={cancelNote}
+                      onChange={(e) => setCancelNote(e.target.value)}
+                      rows={2}
+                      placeholder="Add a short note"
+                      className="w-full rounded-2xl bg-[#EEEDE8] px-3 py-2 text-[14px] outline-none"
+                    />
+                  ) : null}
+                  <Button
+                    className="w-full"
+                    disabled={
+                      cancelOrder.isPending ||
+                      !cancelReason ||
+                      (cancelReason === "Other" && cancelNote.trim().length < 4)
+                    }
+                    onClick={() => void handleCancel()}
+                  >
+                    {cancelOrder.isPending ? "Cancelling…" : "Yes, cancel"}
+                  </Button>
                   <button
                     type="button"
                     className="w-full text-center text-[14px] font-medium text-[#8A8780]"
+                    disabled={cancelOrder.isPending}
                     onClick={() => {
+                      setAskCancel(false);
+                      setCancelReason("");
+                      setCancelNote("");
+                    }}
+                  >
+                    {assigned ? "Keep this order" : "Keep waiting"}
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="md"
+                    className="w-full text-danger"
+                    onClick={() => {
+                      setSnap(OPEN);
                       setCancelError("");
                       setCancelReason("");
                       setCancelNote("");
                       setAskCancel(true);
                     }}
                   >
-                    Cancel
-                  </button>
-                )}
-                {cancelError ? (
-                  <p className="mt-3 text-center text-[13px] text-[#B42318]">
-                    {cancelError}
+                    Cancel this order
+                  </Button>
+                  <p className="mt-2 text-center text-[12px] text-[#8A8780]">
+                    {assigned
+                      ? "You can cancel until the rider picks up the package."
+                      : "Free to cancel while we look for a rider."}
                   </p>
-                ) : null}
-              </div>
-            ) : null}
+                </div>
+              )}
+              {cancelError ? (
+                <p className="mt-3 text-center text-[13px] text-[#B42318]">{cancelError}</p>
+              ) : null}
+            </div>
+          ) : isActiveTrip(trip) ? (
+            <p className="text-center text-[13px] text-[#8A8780]">
+              The rider already has this package, so it is too late to cancel. Call the
+              rider or tap Report if something is wrong.
+            </p>
+          ) : null}
 
-            {trip.status === "completed" || trip.status === "cancelled" ? (
-              <Link href="/">
-                <Button className="w-full">Book another errand</Button>
-              </Link>
-            ) : null}
-          </div>
+          {trip.status === "completed" || trip.status === "cancelled" ? (
+            <Link href="/">
+              <Button className="w-full">Book another errand</Button>
+            </Link>
+          ) : null}
         </div>
       </AppSheet>
     </div>

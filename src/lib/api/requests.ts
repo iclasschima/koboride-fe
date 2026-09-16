@@ -107,6 +107,13 @@ export async function acceptRiderJob(tripId: string): Promise<Trip> {
   return data.trip;
 }
 
+export async function releaseRiderJob(
+  tripId: string,
+  input: { reason: string; note?: string },
+): Promise<void> {
+  await api.post<{ released: boolean }>(`/api/orders/${tripId}/release`, input, rider);
+}
+
 export type RiderMe = {
   id: string;
   approved: boolean;

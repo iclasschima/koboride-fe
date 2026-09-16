@@ -15,6 +15,7 @@ import {
   listRiderEarnings,
   listRiderJobs,
   listTripsPage,
+  releaseRiderJob,
   requestDeliveryPin,
   revealDeliveryPin,
 } from "@/lib/api/requests";
@@ -137,6 +138,19 @@ export function useAdvanceRiderMutation() {
   return useMutation({
     mutationFn: ({ tripId, ...input }: { tripId: string } & AdvanceRiderInput) =>
       advanceRiderStatus(tripId, input),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: queryKeys.trips.all });
+      await qc.invalidateQueries({ queryKey: queryKeys.rider.all });
+      await qc.invalidateQueries({ queryKey: queryKeys.admin.all });
+    },
+  });
+}
+
+export function useReleaseJobMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { tripId: string; reason: string; note?: string }) =>
+      releaseRiderJob(input.tripId, { reason: input.reason, note: input.note }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: queryKeys.trips.all });
       await qc.invalidateQueries({ queryKey: queryKeys.rider.all });

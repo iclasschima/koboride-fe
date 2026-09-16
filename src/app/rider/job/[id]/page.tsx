@@ -11,8 +11,13 @@ import { StatusStepper } from "@/components/ui/StatusStepper";
 import { Button } from "@/components/ui/Button";
 import { tapFeedback } from "@/lib/tapFeedback";
 import { SUPPORT_TEL_URL } from "@/lib/support";
-import { useAdvanceRiderMutation, useRequestDeliveryPinMutation, useRiderTrip } from "@/lib/query/hooks";
-import type { RiderPhase } from "@/types/request";
+import {
+  useAdvanceRiderMutation,
+  useReleaseJobMutation,
+  useRequestDeliveryPinMutation,
+  useRiderTrip,
+} from "@/lib/query/hooks";
+import { canRiderRelease, RELEASE_REASONS, type RiderPhase } from "@/types/request";
 
 const SKIP_REASONS = [
   "Phone died",
@@ -51,10 +56,15 @@ export default function RiderJobPage() {
   );
   const advance = useAdvanceRiderMutation();
   const requestPin = useRequestDeliveryPinMutation();
+  const release = useReleaseJobMutation();
   const [skipOpen, setSkipOpen] = useState(false);
   const [skipReason, setSkipReason] = useState("");
   const [skipPhoto, setSkipPhoto] = useState<File | null>(null);
   const [proofError, setProofError] = useState("");
+  const [askRelease, setAskRelease] = useState(false);
+  const [releaseReason, setReleaseReason] = useState("");
+  const [releaseNote, setReleaseNote] = useState("");
+  const [releaseError, setReleaseError] = useState("");
 
   useEffect(() => {
     if (!askPin) return;
@@ -98,6 +108,7 @@ export default function RiderJobPage() {
   const phase = trip.riderPhase ?? "accepted";
   const pickup = atPickup(phase);
   const dropoff = atDropoff(phase);
+  const canDrop = canRiderRelease(trip);
   const needsPin = Boolean(trip.requiresDeliveryPin ?? trip.deliveryPin);
   const action = ACTION[phase];
   const place = pickup ? trip.pickup : trip.dropoff;
@@ -129,6 +140,20 @@ export default function RiderJobPage() {
     void next();
   }
 
+  async function dropJob() {
+    setReleaseError("");
+    try {
+      await release.mutateAsync({
+        tripId: params.id,
+        reason: releaseReason,
+        note: releaseReason === "Other" ? releaseNote.trim() : undefined,
+      });
+      router.push("/rider");
+    } catch (err) {
+      setReleaseError(err instanceof Error ? err.message : "Could not drop this job");
+    }
+  }
+
   return (
     <div className="relative flex h-full flex-col bg-[#FAFAF7]">
       <div className="relative min-h-36 flex-1">
@@ -152,7 +177,26 @@ export default function RiderJobPage() {
       </div>
 
       <div className="relative z-10 -mt-5 max-h-[72%] shrink-0 overflow-y-auto rounded-t-[28px] bg-[#FAFAF7] px-5 pt-4 pb-2">
-        {askPin && needsPin ? (
+        {askRelease && canDrop ? (
+          <ReleasePanel
+            reason={releaseReason}
+            note={releaseNote}
+            error={releaseError}
+            pending={release.isPending}
+            onReason={setReleaseReason}
+            onNote={setReleaseNote}
+            onBack={() => {
+              setAskRelease(false);
+              setReleaseReason("");
+              setReleaseNote("");
+              setReleaseError("");
+            }}
+            onConfirm={() => {
+              tapFeedback();
+              void dropJob();
+            }}
+          />
+        ) : askPin && needsPin ? (
           <PinPanel
             pin={pin}
             shared={Boolean(trip.deliveryPin && trip.deliveryPin.length === 4)}
@@ -232,12 +276,28 @@ export default function RiderJobPage() {
                   disabled={advance.isPending}
                   onComplete={onAction}
                 />
-                <a
-                  href={SUPPORT_TEL_URL}
-                  className="mt-2 block py-1 text-center text-[13px] font-medium text-[#8A8780]"
-                >
-                  Call support
-                </a>
+                <div className="mt-2 flex items-center justify-center gap-3 text-[13px] font-medium text-[#8A8780]">
+                  <a href={SUPPORT_TEL_URL} className="py-1">
+                    Call support
+                  </a>
+                  {canDrop ? (
+                    <>
+                      <span aria-hidden>·</span>
+                      <button
+                        type="button"
+                        className="py-1"
+                        onClick={() => {
+                          setReleaseError("");
+                          setReleaseReason("");
+                          setReleaseNote("");
+                          setAskRelease(true);
+                        }}
+                      >
+                        Cancel this job
+                      </button>
+                    </>
+                  ) : null}
+                </div>
               </>
             ) : null}
           </>
@@ -360,6 +420,86 @@ function SlideToAction({
         style={{ transform: `translateX(${thumbX}px)` }}
       >
         <Icon className="h-7 w-7" strokeWidth={2.4} />
+      </div>
+    </div>
+  );
+}
+
+function ReleasePanel({
+  reason,
+  note,
+  error,
+  pending,
+  onReason,
+  onNote,
+  onBack,
+  onConfirm,
+}: {
+  reason: string;
+  note: string;
+  error: string;
+  pending: boolean;
+  onReason: (value: string) => void;
+  onNote: (value: string) => void;
+  onBack: () => void;
+  onConfirm: () => void;
+}) {
+  const ready = reason !== "" && (reason !== "Other" || note.trim().length >= 4);
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <p className="font-display text-[22px] font-semibold tracking-[-0.03em]">
+        Cancel this job?
+      </p>
+      <p className="mt-1 text-[15px] text-[#8A8780]">
+        It goes back to the waiting list for another rider. You can only do this before
+        you collect the package.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-1.5">
+        {RELEASE_REASONS.map((option) => (
+          <button
+            key={option}
+            type="button"
+            className={
+              reason === option
+                ? "rounded-full bg-brand px-3 py-2 text-[14px] font-semibold text-white"
+                : "rounded-full bg-[#EEEDE8] px-3 py-2 text-[14px] font-medium"
+            }
+            onClick={() => onReason(option)}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+      {reason === "Other" ? (
+        <textarea
+          value={note}
+          onChange={(e) => onNote(e.target.value)}
+          rows={2}
+          placeholder="Wetin happen?"
+          className="mt-3 w-full rounded-2xl bg-[#EEEDE8] px-3 py-2 text-[16px] outline-none"
+        />
+      ) : null}
+      {error ? <p className="mt-2 text-[16px] font-medium text-danger">{error}</p> : null}
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          className="w-full"
+          disabled={pending}
+          onClick={onBack}
+        >
+          Keep the job
+        </Button>
+        <Button
+          type="button"
+          variant="danger"
+          className="w-full"
+          disabled={pending || !ready}
+          onClick={onConfirm}
+        >
+          {pending ? "…" : "Yes, cancel"}
+        </Button>
       </div>
     </div>
   );

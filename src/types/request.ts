@@ -13,6 +13,16 @@ export type RiderPhase =
 
 export type CustomerRole = "sender" | "receiver";
 
+/** A rider handing a job back before pickup, kept for ops. */
+export type TripRelease = {
+  id: string;
+  riderId: string;
+  riderName: string | null;
+  phase: RiderPhase | null;
+  reason: string;
+  at: string;
+};
+
 export type Trip = {
   id: string;
   pickup: string;
@@ -44,6 +54,8 @@ export type Trip = {
   deliveryProofNote?: string | null;
   deliveryProofPhotoUrl?: string | null;
   cancelReason?: string | null;
+  /** Admin order detail only. */
+  releases?: TripRelease[];
   createdAt: string;
   updatedAt: string;
   completedAt?: string | null;
@@ -99,9 +111,24 @@ export const CANCEL_REASONS = [
   "Other",
 ] as const;
 
+export const RELEASE_REASONS = [
+  "Bike problem",
+  "Too far from me",
+  "Cannot reach the sender",
+  "Emergency",
+  "Other",
+] as const;
+
 /** Customer can cancel until the rider has the package. */
 export function canCustomerCancel(trip: Trip): boolean {
   if (trip.status === "dispatching") return true;
+  if (trip.status !== "in_progress") return false;
+  const phase = trip.riderPhase;
+  return !phase || phase === "accepted" || phase === "en_route_pickup";
+}
+
+/** Rider can hand the job back until they collect the package. */
+export function canRiderRelease(trip: Trip): boolean {
   if (trip.status !== "in_progress") return false;
   const phase = trip.riderPhase;
   return !phase || phase === "accepted" || phase === "en_route_pickup";
