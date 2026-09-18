@@ -20,7 +20,7 @@ export function Avatar({
   return (
     <span
       className={cn(
-        "flex items-center justify-center rounded-full bg-brand font-display font-semibold text-[#FAFAF7]",
+        "flex items-center justify-center rounded-full bg-brand font-display font-semibold text-[#FAF8F5]",
         className,
       )}
     >

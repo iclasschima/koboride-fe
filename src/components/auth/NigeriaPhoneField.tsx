@@ -4,22 +4,27 @@ import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { sanitizeNgLocalInput } from "@/lib/phone";
 
-const fieldClass =
-  "h-12 rounded-2xl bg-[#EEEDE8] text-[15px] text-[#1A1A16] outline-none";
-
 export function NigeriaPhoneField({
   value,
   onChange,
   disabled,
   id,
   autoFocus,
+  /** Soft fill — use "canvas" when the field sits on a muted card. */
+  tone = "muted",
 }: {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
   id?: string;
   autoFocus?: boolean;
+  tone?: "muted" | "canvas";
 }) {
+  const fieldClass = cn(
+    "h-12 rounded-2xl text-[15px] text-[#1A1A16] outline-none",
+    tone === "canvas" ? "bg-[#FAFAF7]" : "bg-[#EEEDE8]",
+  );
+
   return (
     <div className="flex gap-2">
       <div className="relative shrink-0">

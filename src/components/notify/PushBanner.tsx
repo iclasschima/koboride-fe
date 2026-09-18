@@ -27,7 +27,7 @@ export function PushBanner() {
   return (
     <button
       type="button"
-      className="fixed top-3 right-3 z-[80] max-w-sm rounded-2xl border border-black/10 bg-white px-4 py-3 text-left shadow-[0_12px_40px_rgba(15,61,46,0.18)]"
+      className="fixed top-3 right-3 z-[80] max-w-sm rounded-2xl border border-black/10 bg-white px-4 py-3 text-left shadow-[0_12px_40px_rgba(27,42,74,0.18)]"
       onClick={() => {
         const url = banner.url;
         setBanner(null);

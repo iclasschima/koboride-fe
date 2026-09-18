@@ -12,7 +12,7 @@ import {
 import type { RiderWriteInput } from "@/lib/api/admin";
 
 const inputClass =
-  "h-10 w-full rounded-lg bg-[#FAFAF7] px-3 text-[14px] ring-1 ring-black/8 outline-none placeholder:text-[#8A8780]";
+  "h-10 w-full rounded-lg bg-[#FAF8F5] px-3 text-[14px] ring-1 ring-black/8 outline-none placeholder:text-[#8A8780]";
 
 export function RiderVerificationForm({
   rider,
@@ -129,7 +129,7 @@ export function RiderVerificationForm({
             name={name || "Rider"}
             className="h-14 w-14 shrink-0 text-[16px]"
           />
-          <label className="flex h-10 cursor-pointer items-center rounded-lg bg-[#FAFAF7] px-3 text-[13px] font-medium text-[#5C5A55] ring-1 ring-black/8">
+          <label className="flex h-10 cursor-pointer items-center rounded-lg bg-[#FAF8F5] px-3 text-[13px] font-medium text-[#5C5A55] ring-1 ring-black/8">
             {photo || rider?.photoUrl ? "Change photo" : "Choose photo"}
             <input
               type="file"
@@ -174,7 +174,7 @@ export function RiderVerificationForm({
           />
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <label className="flex h-10 cursor-pointer items-center rounded-lg bg-[#FAFAF7] px-3 text-[13px] font-medium text-[#5C5A55] ring-1 ring-black/8">
+          <label className="flex h-10 cursor-pointer items-center rounded-lg bg-[#FAF8F5] px-3 text-[13px] font-medium text-[#5C5A55] ring-1 ring-black/8">
             {idDocument || rider?.idDocumentUrl ? "Change ID image" : "Upload ID image"}
             <input
               type="file"

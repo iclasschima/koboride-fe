@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Clock3, House, UserRound } from "lucide-react";
+import { Clock3, Motorbike, UserRound } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const TABS = [
-  { href: "/", label: "Home", icon: House },
+  { href: "/", label: "Home", icon: Motorbike },
   { href: "/trips", label: "Orders", icon: Clock3 },
   { href: "/profile", label: "Account", icon: UserRound },
 ] as const;
@@ -19,6 +19,11 @@ export function BottomNav() {
       className="pointer-events-none absolute inset-x-0 bottom-0 z-50 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       aria-label="Main"
     >
+      {/* Cover the home-indicator and the gap under the floating pill. */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-[var(--kb-nav)] bg-[#FAFAF7]"
+        aria-hidden
+      />
       <ul className="pointer-events-auto grid grid-cols-3 rounded-[28px] bg-[#FAFAF7]/92 px-1.5 py-1.5 shadow-[0_12px_40px_rgba(15,61,46,0.18)] ring-1 ring-black/6 backdrop-blur-xl">
         {TABS.map((tab) => {
           const active =

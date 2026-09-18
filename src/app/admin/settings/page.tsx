@@ -9,6 +9,10 @@ export default function AdminSettingsPage() {
   const save = useUpdateAdminSettingsMutation();
   const [maxActiveOrders, setMaxActiveOrders] = useState("3");
   const [platformCutPercent, setPlatformCutPercent] = useState("15");
+  const [baseFeeNgn, setBaseFeeNgn] = useState("400");
+  const [perKmFeeNgn, setPerKmFeeNgn] = useState("250");
+  const [minFareNgn, setMinFareNgn] = useState("650");
+  const [onlinePaymentDiscountNgn, setOnlinePaymentDiscountNgn] = useState("50");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
 
@@ -16,6 +20,10 @@ export default function AdminSettingsPage() {
     if (!data) return;
     setMaxActiveOrders(String(data.maxActiveOrders));
     setPlatformCutPercent(String(data.platformCutPercent ?? 15));
+    setBaseFeeNgn(String(data.baseFeeNgn ?? 400));
+    setPerKmFeeNgn(String(data.perKmFeeNgn ?? 250));
+    setMinFareNgn(String(data.minFareNgn ?? 650));
+    setOnlinePaymentDiscountNgn(String(data.onlinePaymentDiscountNgn ?? 50));
   }, [data]);
 
   async function onSubmit(event: React.FormEvent) {
@@ -24,6 +32,10 @@ export default function AdminSettingsPage() {
     setSaved(false);
     const cap = Number.parseInt(maxActiveOrders, 10);
     const cut = Number.parseInt(platformCutPercent, 10);
+    const base = Number.parseInt(baseFeeNgn, 10);
+    const perKm = Number.parseInt(perKmFeeNgn, 10);
+    const minFare = Number.parseInt(minFareNgn, 10);
+    const onlineDiscount = Number.parseInt(onlinePaymentDiscountNgn, 10);
     if (!Number.isInteger(cap) || cap < 1 || cap > 50) {
       setError("Live order cap must be a whole number from 1 to 50.");
       return;
@@ -32,16 +44,39 @@ export default function AdminSettingsPage() {
       setError("Platform cut must be 0–50 percent.");
       return;
     }
+    if (!Number.isInteger(base) || base < 0 || base > 50_000) {
+      setError("Base fare must be 0–50,000.");
+      return;
+    }
+    if (!Number.isInteger(perKm) || perKm < 0 || perKm > 50_000) {
+      setError("Per-km rate must be 0–50,000.");
+      return;
+    }
+    if (!Number.isInteger(minFare) || minFare < 0 || minFare > 50_000) {
+      setError("Minimum fare must be 0–50,000.");
+      return;
+    }
+    if (!Number.isInteger(onlineDiscount) || onlineDiscount < 0 || onlineDiscount > 5_000) {
+      setError("Online discount must be 0–5,000.");
+      return;
+    }
     try {
       await save.mutateAsync({
         maxActiveOrders: cap,
         platformCutPercent: cut,
+        baseFeeNgn: base,
+        perKmFeeNgn: perKm,
+        minFareNgn: minFare,
+        onlinePaymentDiscountNgn: onlineDiscount,
       });
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save settings");
     }
   }
+
+  const inputClass =
+    "h-11 w-28 rounded-lg bg-[#FAF8F5] px-3 text-[16px] ring-1 ring-black/8 outline-none focus:ring-brand/40";
 
   return (
     <div className="max-w-xl">
@@ -53,7 +88,7 @@ export default function AdminSettingsPage() {
       </p>
 
       {isPending ? (
-        <div className="mt-6 h-40 animate-pulse rounded-xl bg-[#EEEDE8]" />
+        <div className="mt-6 h-40 animate-pulse rounded-xl bg-[#EFEBE6]" />
       ) : isError ? (
         <p className="mt-6 text-[13px] font-medium text-danger">
           Could not load settings.
@@ -82,7 +117,7 @@ export default function AdminSettingsPage() {
                   setSaved(false);
                   setMaxActiveOrders(e.target.value);
                 }}
-                className="mt-2 h-11 w-28 rounded-lg bg-[#FAFAF7] px-3 text-[16px] ring-1 ring-black/8 outline-none focus:ring-brand/40"
+                className={`mt-2 ${inputClass}`}
               />
               <p className="mt-2 text-[13px] text-[#8A8780]">
                 A customer cannot start another pickup while they already have this
@@ -109,7 +144,7 @@ export default function AdminSettingsPage() {
                     setSaved(false);
                     setPlatformCutPercent(e.target.value);
                   }}
-                  className="h-11 w-28 rounded-lg bg-[#FAFAF7] px-3 text-[16px] ring-1 ring-black/8 outline-none focus:ring-brand/40"
+                  className={inputClass}
                 />
                 <span className="text-[14px] text-[#8A8780]">%</span>
               </div>
@@ -119,6 +154,103 @@ export default function AdminSettingsPage() {
                 were quoted with.
               </p>
             </div>
+
+            <fieldset className="space-y-4 border-t border-black/6 pt-6">
+              <legend className="text-[12px] font-semibold tracking-[0.06em] text-[#8A8780] uppercase">
+                Distance fare
+              </legend>
+              <p className="text-[13px] text-[#8A8780]">
+                Fare = max(minimum, base + distance × per-km), then rounded to the
+                nearest ₦50 for the customer. Online discount is taken from
+                platform margin only — rider payout uses the full list fare.
+              </p>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                <div>
+                  <label
+                    htmlFor="baseFeeNgn"
+                    className="text-[12px] font-medium text-[#8A8780]"
+                  >
+                    Base (₦)
+                  </label>
+                  <input
+                    id="baseFeeNgn"
+                    type="number"
+                    min={0}
+                    max={50000}
+                    step={1}
+                    value={baseFeeNgn}
+                    onChange={(e) => {
+                      setSaved(false);
+                      setBaseFeeNgn(e.target.value);
+                    }}
+                    className={`mt-1.5 ${inputClass} w-full`}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="perKmFeeNgn"
+                    className="text-[12px] font-medium text-[#8A8780]"
+                  >
+                    Per km (₦)
+                  </label>
+                  <input
+                    id="perKmFeeNgn"
+                    type="number"
+                    min={0}
+                    max={50000}
+                    step={1}
+                    value={perKmFeeNgn}
+                    onChange={(e) => {
+                      setSaved(false);
+                      setPerKmFeeNgn(e.target.value);
+                    }}
+                    className={`mt-1.5 ${inputClass} w-full`}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="minFareNgn"
+                    className="text-[12px] font-medium text-[#8A8780]"
+                  >
+                    Minimum (₦)
+                  </label>
+                  <input
+                    id="minFareNgn"
+                    type="number"
+                    min={0}
+                    max={50000}
+                    step={1}
+                    value={minFareNgn}
+                    onChange={(e) => {
+                      setSaved(false);
+                      setMinFareNgn(e.target.value);
+                    }}
+                    className={`mt-1.5 ${inputClass} w-full`}
+                  />
+                </div>
+              </div>
+              <div>
+                <label
+                  htmlFor="onlinePaymentDiscountNgn"
+                  className="text-[12px] font-medium text-[#8A8780]"
+                >
+                  Online pay discount (₦)
+                </label>
+                <input
+                  id="onlinePaymentDiscountNgn"
+                  type="number"
+                  min={0}
+                  max={5000}
+                  step={1}
+                  value={onlinePaymentDiscountNgn}
+                  onChange={(e) => {
+                    setSaved(false);
+                    setOnlinePaymentDiscountNgn(e.target.value);
+                  }}
+                  className={`mt-1.5 ${inputClass}`}
+                />
+              </div>
+            </fieldset>
 
             {error ? (
               <p className="text-[13px] font-medium text-danger">{error}</p>

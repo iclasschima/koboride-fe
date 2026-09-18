@@ -14,9 +14,9 @@ import {
   useRiderEarnings,
   useRiderMe,
 } from "@/lib/query/hooks";
-import { formatNaira } from "@/lib/format";
+import { formatKm, formatNaira } from "@/lib/format";
 import { cn } from "@/lib/cn";
-import type { Trip } from "@/types/request";
+import { tripPaidOnline, type Trip } from "@/types/request";
 
 export default function RiderHomePage() {
   const router = useRouter();
@@ -108,45 +108,71 @@ export default function RiderHomePage() {
         </div>
       </div>
 
-      <div className="absolute inset-x-0 bottom-[var(--kb-nav)] z-20 max-h-[46%] overflow-y-auto rounded-t-[28px] bg-[#FAFAF7] px-4 pt-3 pb-4 shadow-[0_-8px_32px_rgba(15,61,46,0.12)]">
+      <div className="absolute inset-x-0 bottom-0 z-20 max-h-[calc(46%+var(--kb-nav))] overflow-y-auto rounded-t-[28px] bg-[#FAFAF7] px-4 pt-2.5 pb-[calc(var(--kb-nav)+0.5rem)] shadow-[0_-8px_32px_rgba(15,61,46,0.12)]">
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[#D9D6CE]" aria-hidden />
+
         {job ? (
           <button
             type="button"
-            className="w-full rounded-2xl bg-brand px-4 py-3.5 text-left text-[#FAFAF7]"
+            className="w-full rounded-2xl bg-brand px-4 py-3.5 text-left text-[#FAFAF7] transition-opacity active:opacity-90"
             onClick={() => router.push(`/rider/job/${job.id}`)}
           >
-            <p className="text-[12px] font-medium text-white/70">Your assigned order</p>
-            <p className="font-display text-[16px] font-semibold">
+            <p className="text-[11px] font-medium tracking-[0.06em] text-white/65 uppercase">
+              Active job
+            </p>
+            <p className="mt-0.5 font-display text-[16px] font-semibold tracking-[-0.02em]">
               Continue to {job.dropoff}
             </p>
-            <p className="mt-1 text-[13px] text-white/80">{job.pickup}</p>
+            <p className="mt-1 truncate text-[13px] text-white/75">{job.pickup}</p>
           </button>
         ) : null}
 
-        <h2
+        <div
           className={cn(
-            "font-display text-[16px] font-semibold tracking-[-0.02em]",
-            job ? "mt-4" : "mt-1",
+            "flex items-end justify-between gap-3",
+            job ? "mt-4" : "mt-0.5",
           )}
         >
-          Jobs waiting
-        </h2>
+          <div>
+            <h2 className="font-display text-[18px] font-semibold tracking-[-0.03em]">
+              Jobs waiting
+            </h2>
+            {awaiting.length > 0 ? (
+              <p className="mt-0.5 text-[13px] text-[#8A8780]">
+                {awaiting.length === 1
+                  ? "1 request nearby"
+                  : `${awaiting.length} requests nearby`}
+              </p>
+            ) : null}
+          </div>
+          {awaiting.length > 0 ? (
+            <span className="num mb-0.5 inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-brand px-2 text-[13px] font-semibold text-[#FAFAF7]">
+              {awaiting.length}
+            </span>
+          ) : null}
+        </div>
+
         {awaiting.length === 0 ? (
-          <p className="mt-2 text-[14px] text-[#8A8780]">
-            {online
-              ? "No orders waiting. New requests show up here."
-              : "Go online when you’re ready. New requests land here."}
-          </p>
+          <div className="mt-4 rounded-2xl bg-[#EEEDE8]/80 px-4 py-5 text-center">
+            <p className="font-display text-[15px] font-semibold text-[#1A1A16]">
+              {online ? "No jobs yet" : "You’re offline"}
+            </p>
+            <p className="mt-1 text-[13px] leading-snug text-[#8A8780]">
+              {online
+                ? "New requests will show up here as they come in."
+                : "Go online when you’re ready to take jobs."}
+            </p>
+          </div>
         ) : (
           <>
             {acceptError ? (
-              <p className="mt-2 text-[13px] font-medium text-danger">{acceptError}</p>
+              <p className="mt-3 text-[13px] font-medium text-danger">{acceptError}</p>
             ) : job ? (
               <p className="mt-2 text-[13px] text-[#8A8780]">
                 Finish your current job before accepting another.
               </p>
             ) : null}
-            <ul className="mt-2 space-y-2">
+            <ul className="mt-3 space-y-2.5">
               {awaiting.map((trip) => (
                 <AwaitingRow
                   key={trip.id}
@@ -185,19 +211,43 @@ function AwaitingRow({
   pending: boolean;
   onAccept: () => void;
 }) {
+  const paidOnline = tripPaidOnline(trip);
+
   return (
-    <li className="rounded-2xl bg-[#EEEDE8] px-4 py-3">
-      <p className="truncate text-[14px] font-medium text-[#1A1A16]">{trip.pickup}</p>
-      <p className="truncate text-[13px] text-[#8A8780]">→ {trip.dropoff}</p>
-      <div className="mt-2 flex justify-end">
+    <li className="overflow-hidden rounded-[22px] bg-white ring-1 ring-black/5">
+      <div className="flex gap-3 px-3.5 pt-3.5 pb-3">
+        <div className="flex w-3 shrink-0 flex-col items-center pt-1.5" aria-hidden>
+          <span className="h-2.5 w-2.5 rounded-full bg-brand" />
+          <span className="my-1 w-px flex-1 bg-[#D9D6CE]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-accent" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-display text-[15px] font-semibold tracking-[-0.02em] text-[#1A1A16]">
+            {trip.pickup}
+          </p>
+          <p className="mt-2 truncate text-[14px] text-[#5C5A54]">{trip.dropoff}</p>
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-[#8A8780]">
+            <span className="num font-medium text-[#1A1A16]">
+              {formatNaira(trip.payoutNgn)}
+            </span>
+            <span aria-hidden>·</span>
+            <span>{formatKm(trip.distanceKm)}</span>
+            <span aria-hidden>·</span>
+            <span className={paidOnline ? "font-medium text-success" : undefined}>
+              {paidOnline ? "Paid online" : "Cash"}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="border-t border-black/4 px-3.5 py-2.5">
         <Button
           type="button"
           size="md"
-          className="h-10 px-4"
+          className="h-11 w-full"
           disabled={busy}
           onClick={onAccept}
         >
-          {pending ? "Accepting…" : "Accept"}
+          {pending ? "Accepting…" : "Accept job"}
         </Button>
       </div>
     </li>

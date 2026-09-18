@@ -9,7 +9,6 @@ import {
   type PushAppRole,
 } from "@/lib/push";
 import { usePwaInstall } from "@/components/pwa/PwaInstallProvider";
-import { InstallAppButton } from "@/components/pwa/AddToHomeScreen";
 
 export function EnableNotifications({
   role,
@@ -57,12 +56,10 @@ export function EnableNotifications({
   const body = (() => {
     if (ios && !installed) {
       return (
-        <div className="mt-3 rounded-2xl bg-[#EEEDE8] px-3.5 py-3">
-          <p className="text-[13px] font-medium text-[#1A1A16]">
-            Add KoboRide to your Home Screen first, then turn on alerts from here.
-          </p>
-          <InstallAppButton className="mt-2.5 w-full" size="md" />
-        </div>
+        <p className="mt-2 text-[13px] text-[#8A8780]">
+          Add KoboRide to your Home Screen first (below), then come back here to turn on
+          alerts.
+        </p>
       );
     }
 

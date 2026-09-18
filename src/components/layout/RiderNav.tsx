@@ -19,6 +19,10 @@ export function RiderNav() {
       className="pointer-events-none absolute inset-x-0 bottom-0 z-50 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       aria-label="Rider"
     >
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-[var(--kb-nav)] bg-[#FAFAF7]"
+        aria-hidden
+      />
       <ul className="pointer-events-auto grid grid-cols-3 rounded-[28px] bg-[#FAFAF7]/92 px-1.5 py-1.5 shadow-[0_12px_40px_rgba(15,61,46,0.18)] ring-1 ring-black/6 backdrop-blur-xl">
         {TABS.map((tab) => {
           const active =

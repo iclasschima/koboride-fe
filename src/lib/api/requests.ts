@@ -64,9 +64,14 @@ export async function initializeOrderPayment(input: CreateTripInput): Promise<Pa
 
 export type FareEstimate = {
   feeNgn: number;
+  onlineFeeNgn?: number;
+  onlineDiscountNgn?: number;
   payoutNgn: number;
   distanceKm: number;
   maxDistanceKm: number;
+  baseFeeNgn?: number;
+  perKmFeeNgn?: number;
+  minFareNgn?: number;
 };
 
 export async function estimateFare(input: {

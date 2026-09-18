@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, LocateFixed, MapPin, Package, ShoppingBag, Star, User } from "lucide-react";
+import { NigeriaPhoneField } from "@/components/auth/NigeriaPhoneField";
 import { AppSheet } from "@/components/ui/AppSheet";
 import { Button } from "@/components/ui/Button";
 import { FareNumber } from "@/components/ui/FareNumber";
@@ -18,10 +19,17 @@ import { estimateFare, initializeOrderPayment } from "@/lib/api/requests";
 import { SEARCH_PLACES, type Place } from "@/lib/places";
 import { quoteFee, isInActiveServiceArea } from "@/lib/fare";
 import { formatNaira } from "@/lib/format";
+import { NG_PHONE_ERROR, normalizeNgPhone } from "@/lib/phone";
 import { useClientAppStatus, useCreateTripMutation } from "@/lib/query/hooks";
 import { activatePush, primePushPermission } from "@/lib/push";
 import { cn } from "@/lib/cn";
-import { tripHeadline, type CustomerRole, type PaymentMethod, type Trip } from "@/types/request";
+import {
+  ONLINE_PAYMENT_DISCOUNT_NGN,
+  tripHeadline,
+  type CustomerRole,
+  type PaymentMethod,
+  type Trip,
+} from "@/types/request";
 import { openPaystack } from "@/lib/paystack";
 
 function newSession() {
@@ -34,6 +42,22 @@ const TALL = 0.9;
 
 type Step = "peek" | "locations" | "search" | "details" | "fare";
 type SearchTarget = "pickup" | "dropoff";
+
+const PACKAGE_PRESETS = [
+  "Documents",
+  "Food pack",
+  "Groceries",
+  "Clothes",
+  "Small parcel",
+  "Phone or gadget",
+] as const;
+
+const PACKAGE_OTHER = "other";
+
+function packageNotes(kind: string | null, custom: string): string {
+  if (kind === PACKAGE_OTHER) return custom.trim();
+  return kind?.trim() ?? "";
+}
 
 export function BookingSheet({
   activeTrip,
@@ -63,7 +87,8 @@ export function BookingSheet({
   const [searchError, setSearchError] = useState("");
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
-  const [notes, setNotes] = useState("");
+  const [packageKind, setPackageKind] = useState<string | null>(null);
+  const [customNotes, setCustomNotes] = useState("");
   const [customerRole, setCustomerRole] = useState<CustomerRole>("sender");
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
@@ -71,6 +96,9 @@ export function BookingSheet({
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState("");
   const [distanceError, setDistanceError] = useState("");
+  const [quotedListFee, setQuotedListFee] = useState(0);
+  const [quotedOnlineFee, setQuotedOnlineFee] = useState(0);
+  const [quotedOnlineDiscount, setQuotedOnlineDiscount] = useState(ONLINE_PAYMENT_DISCOUNT_NGN);
   const [checkingRange, setCheckingRange] = useState(false);
   const sessionRef = useRef(newSession());
 
@@ -87,19 +115,20 @@ export function BookingSheet({
     onRouteChange(pickup || null, dropoff || null);
   }, [step, pickup, dropoff, onRouteChange]);
 
-  const fee = useMemo(() => {
-    if (!pickupPlace || !dropoffPlace || distanceError) return 0;
-    return quoteFee({
-      pickupLat: pickupPlace.lat,
-      pickupLng: pickupPlace.lng,
-      dropoffLat: dropoffPlace.lat,
-      dropoffLng: dropoffPlace.lng,
-    });
-  }, [pickupPlace, dropoffPlace, distanceError]);
+  const listFee = quotedListFee;
+  const fee =
+    paystackEnabled && paymentMethod === "paystack" && quotedOnlineFee > 0
+      ? quotedOnlineFee
+      : listFee;
+  const onlineDiscount =
+    paystackEnabled && paymentMethod === "paystack" && listFee > fee ? listFee - fee : 0;
 
   useEffect(() => {
     if (!pickupPlace || !dropoffPlace) {
       setDistanceError("");
+      setQuotedListFee(0);
+      setQuotedOnlineFee(0);
+      setQuotedOnlineDiscount(ONLINE_PAYMENT_DISCOUNT_NGN);
       setCheckingRange(false);
       return;
     }
@@ -113,8 +142,14 @@ export function BookingSheet({
       dropoffLat: dropoffPlace.lat,
       dropoffLng: dropoffPlace.lng,
     })
-      .then(() => {
-        if (!cancelled) setDistanceError("");
+      .then((estimate) => {
+        if (cancelled) return;
+        setDistanceError("");
+        setQuotedListFee(estimate.feeNgn);
+        setQuotedOnlineFee(estimate.onlineFeeNgn ?? estimate.feeNgn);
+        setQuotedOnlineDiscount(
+          estimate.onlineDiscountNgn ?? ONLINE_PAYMENT_DISCOUNT_NGN,
+        );
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -123,9 +158,29 @@ export function BookingSheet({
           (err.code === "DISTANCE_EXCEEDS_MAX" || err.code === "OUTSIDE_SERVICE_AREA")
         ) {
           setDistanceError(err.message);
+          setQuotedListFee(0);
+          setQuotedOnlineFee(0);
           return;
         }
+        // Fallback preview if estimate fails for other reasons
         setDistanceError("");
+        const preview = quoteFee({
+          pickupLat: pickupPlace.lat,
+          pickupLng: pickupPlace.lng,
+          dropoffLat: dropoffPlace.lat,
+          dropoffLng: dropoffPlace.lng,
+          paymentMethod: "cash",
+        });
+        setQuotedListFee(preview);
+        setQuotedOnlineFee(
+          quoteFee({
+            pickupLat: pickupPlace.lat,
+            pickupLng: pickupPlace.lng,
+            dropoffLat: dropoffPlace.lat,
+            dropoffLng: dropoffPlace.lng,
+            paymentMethod: "paystack",
+          }),
+        );
       })
       .finally(() => {
         if (!cancelled) setCheckingRange(false);
@@ -287,7 +342,8 @@ export function BookingSheet({
     setSnap(PEEK);
     setPickupPlace(null);
     setDropoffPlace(null);
-    setNotes("");
+    setPackageKind(null);
+    setCustomNotes("");
     setCustomerRole("sender");
     setContactName("");
     setContactPhone("");
@@ -295,6 +351,9 @@ export function BookingSheet({
     setPaying(false);
     setError("");
     setDistanceError("");
+    setQuotedListFee(0);
+    setQuotedOnlineFee(0);
+    setQuotedOnlineDiscount(ONLINE_PAYMENT_DISCOUNT_NGN);
     setCheckingRange(false);
   }
 
@@ -309,15 +368,29 @@ export function BookingSheet({
     void activatePush("customer");
     const meName = user?.name?.trim() || "Customer";
     const mePhone = user?.phone ?? "";
+    const otherPhone = normalizeNgPhone(contactPhone);
+    if (!otherPhone) {
+      setError(NG_PHONE_ERROR);
+      setStep("details");
+      setSnap(MID);
+      return;
+    }
+    const notes = packageNotes(packageKind, customNotes);
+    if (!notes) {
+      setError("Tell us what we’re moving");
+      setStep("details");
+      setSnap(MID);
+      return;
+    }
     const payload = {
       pickup: pickupPlace.name,
       dropoff: dropoffPlace.name,
       notes,
       customerRole,
       senderName: sending ? meName : contactName.trim(),
-      senderPhone: sending ? mePhone : contactPhone.trim(),
+      senderPhone: sending ? mePhone : otherPhone,
       receiverName: sending ? contactName.trim() : meName,
-      receiverPhone: sending ? contactPhone.trim() : mePhone,
+      receiverPhone: sending ? otherPhone : mePhone,
       pickupLat: pickupPlace.lat,
       pickupLng: pickupPlace.lng,
       dropoffLat: dropoffPlace.lat,
@@ -360,9 +433,9 @@ export function BookingSheet({
       activeSnapPoint={snap}
       setActiveSnapPoint={setSnap}
       autoHeight={step !== "search"}
-      className="bottom-[var(--kb-nav)] z-40"
+      className="bottom-0 z-40"
     >
-      <div className="flex min-h-0 flex-1 flex-col px-5 pb-5 pt-1">
+      <div className="flex min-h-0 flex-1 flex-col px-5 pt-1 pb-[calc(var(--kb-nav)+0.35rem)]">
         {activeTrip && step === "peek" ? (
           <button
             type="button"
@@ -661,15 +734,56 @@ export function BookingSheet({
               </button>
             </div>
 
-            <label className="mt-5 block">
-              <span className="text-[13px] font-medium text-[#8A8780]">What’s moving</span>
-              <textarea
-                className="mt-1.5 min-h-22 w-full resize-none rounded-2xl bg-[#EEEDE8] px-4 py-3 text-[15px] outline-none placeholder:text-[#8A8780]"
-                placeholder="A small bag, documents, a food pack…"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-            </label>
+            <div className="mt-5">
+              <p className="text-[13px] font-medium text-[#8A8780]">What’s moving</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {PACKAGE_PRESETS.map((label) => {
+                  const selected = packageKind === label;
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      className={cn(
+                        "rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors",
+                        selected
+                          ? "bg-brand text-[#FAFAF7]"
+                          : "bg-[#EEEDE8] text-[#1A1A16]",
+                      )}
+                      onClick={() => {
+                        setPackageKind(label);
+                        setError("");
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  className={cn(
+                    "rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors",
+                    packageKind === PACKAGE_OTHER
+                      ? "bg-brand text-[#FAFAF7]"
+                      : "bg-[#EEEDE8] text-[#1A1A16]",
+                  )}
+                  onClick={() => {
+                    setPackageKind(PACKAGE_OTHER);
+                    setError("");
+                  }}
+                >
+                  Something else
+                </button>
+              </div>
+              {packageKind === PACKAGE_OTHER ? (
+                <textarea
+                  className="mt-3 min-h-22 w-full resize-none rounded-2xl bg-[#EEEDE8] px-4 py-3 text-[15px] outline-none placeholder:text-[#8A8780]"
+                  placeholder="Describe what we’re moving…"
+                  value={customNotes}
+                  onChange={(e) => setCustomNotes(e.target.value)}
+                  autoFocus
+                />
+              ) : null}
+            </div>
 
             <div className="mt-4 rounded-[22px] bg-[#EEEDE8] p-4">
               <div className="flex items-center gap-2.5">
@@ -692,14 +806,13 @@ export function BookingSheet({
                 onChange={(e) => setContactName(e.target.value)}
                 autoComplete="name"
               />
-              <input
-                className="mt-2 h-12 w-full rounded-2xl bg-[#FAFAF7] px-4 text-[15px] outline-none placeholder:text-[#8A8780]"
-                placeholder="Phone number"
-                inputMode="tel"
-                autoComplete="tel"
-                value={contactPhone}
-                onChange={(e) => setContactPhone(e.target.value)}
-              />
+              <div className="mt-2">
+                <NigeriaPhoneField
+                  tone="canvas"
+                  value={contactPhone}
+                  onChange={setContactPhone}
+                />
+              </div>
             </div>
 
             {error ? (
@@ -708,16 +821,22 @@ export function BookingSheet({
             <Button
               className="mt-5 w-full"
               onClick={() => {
-                if (!notes.trim()) {
-                  setError("Tell us what we’re moving");
+                if (!packageNotes(packageKind, customNotes)) {
+                  setError(
+                    packageKind === PACKAGE_OTHER
+                      ? "Describe what we’re moving"
+                      : "Pick what we’re moving",
+                  );
                   return;
                 }
-                if (contactName.trim().length < 2 || contactPhone.trim().length < 7) {
+                if (contactName.trim().length < 2) {
                   setError(
-                    sending
-                      ? "Add the receiver name and phone"
-                      : "Add the sender name and phone",
+                    sending ? "Add the receiver’s name" : "Add the sender’s name",
                   );
+                  return;
+                }
+                if (!normalizeNgPhone(contactPhone)) {
+                  setError(NG_PHONE_ERROR);
                   return;
                 }
                 setError("");
@@ -733,10 +852,12 @@ export function BookingSheet({
         {step === "fare" ? (
           <div>
             <FareNumber amount={fee} />
-            <p className="mt-2 text-[13px] text-[#8A8780]">
-              Flat rate ·{" "}
-              <span className="num font-semibold">{formatNaira(fee)}</span>
-            </p>
+            {onlineDiscount > 0 ? (
+              <p className="mt-2 text-[13px] text-[#8A8780]">
+                Save {formatNaira(onlineDiscount)} online · cash{" "}
+                <span className="num line-through">{formatNaira(listFee)}</span>
+              </p>
+            ) : null}
             {paystackEnabled ? (
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <button
@@ -754,7 +875,7 @@ export function BookingSheet({
                       paymentMethod === "paystack" ? "text-white/70" : "text-[#8A8780]",
                     )}
                   >
-                    Card or transfer
+                    Save {formatNaira(quotedOnlineDiscount || ONLINE_PAYMENT_DISCOUNT_NGN)}
                   </p>
                 </button>
                 <button
@@ -779,18 +900,16 @@ export function BookingSheet({
             ) : (
               <p className="mt-2 text-[13px] text-[#8A8780]">Pay cash to the rider</p>
             )}
+            {paystackEnabled && paymentMethod === "paystack" ? (
+              <p className="mt-3 text-[13px] text-[#8A8780]">
+                If you cancel, your payment is refunded automatically to your account.
+              </p>
+            ) : null}
             {error ? (
               <p className="mt-3 text-[13px] font-medium text-danger">{error}</p>
             ) : null}
-            <button
-              type="button"
-              className="mt-6 mb-3 w-full text-center text-[14px] font-medium text-[#8A8780]"
-              onClick={reset}
-            >
-              Cancel
-            </button>
             <Button
-              className="w-full"
+              className="mt-6 w-full"
               disabled={createTrip.isPending || paying}
               onClick={() => void findRider()}
             >
@@ -802,6 +921,13 @@ export function BookingSheet({
                     ? `Pay ${formatNaira(fee)}`
                     : "Find a rider"}
             </Button>
+            <button
+              type="button"
+              className="mt-3 w-full text-center text-[14px] font-medium text-[#8A8780]"
+              onClick={reset}
+            >
+              Cancel
+            </button>
           </div>
         ) : null}
       </div>

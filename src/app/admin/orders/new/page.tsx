@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
@@ -16,7 +16,7 @@ import { quoteFee } from "@/lib/fare";
 import { formatNaira } from "@/lib/format";
 import { type Place } from "@/lib/places";
 import { useAdminRiders, useCreateAdminOrderMutation } from "@/lib/query/hooks";
-import { YABA_FLAT_FEE_NGN, type CustomerRole } from "@/types/request";
+import { type CustomerRole } from "@/types/request";
 
 const inputClass =
   "h-10 w-full rounded-lg bg-[#FAFAF7] px-3 text-[14px] ring-1 ring-black/8 outline-none placeholder:text-[#8A8780]";
@@ -39,20 +39,12 @@ export default function AdminCreateOrderPage() {
   const [error, setError] = useState("");
   const [distanceError, setDistanceError] = useState("");
   const [checkingRange, setCheckingRange] = useState(false);
-
-  const fee = useMemo(() => {
-    if (!pickup || !dropoff || distanceError) return 0;
-    return quoteFee({
-      pickupLat: pickup.lat,
-      pickupLng: pickup.lng,
-      dropoffLat: dropoff.lat,
-      dropoffLng: dropoff.lng,
-    });
-  }, [pickup, dropoff, distanceError]);
+  const [fee, setFee] = useState(0);
 
   useEffect(() => {
     if (!pickup || !dropoff) {
       setDistanceError("");
+      setFee(0);
       setCheckingRange(false);
       return;
     }
@@ -65,8 +57,10 @@ export default function AdminCreateOrderPage() {
       dropoffLat: dropoff.lat,
       dropoffLng: dropoff.lng,
     })
-      .then(() => {
-        if (!cancelled) setDistanceError("");
+      .then((estimate) => {
+        if (cancelled) return;
+        setDistanceError("");
+        setFee(estimate.feeNgn);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -75,9 +69,18 @@ export default function AdminCreateOrderPage() {
           (err.code === "DISTANCE_EXCEEDS_MAX" || err.code === "OUTSIDE_SERVICE_AREA")
         ) {
           setDistanceError(err.message);
+          setFee(0);
           return;
         }
         setDistanceError("");
+        setFee(
+          quoteFee({
+            pickupLat: pickup.lat,
+            pickupLng: pickup.lng,
+            dropoffLat: dropoff.lat,
+            dropoffLng: dropoff.lng,
+          }),
+        );
       })
       .finally(() => {
         if (!cancelled) setCheckingRange(false);
@@ -139,7 +142,7 @@ export default function AdminCreateOrderPage() {
         Create order
       </h1>
       <p className="mt-1 text-[14px] text-[#8A8780]">
-        Book a pickup for a customer. Same {formatNaira(YABA_FLAT_FEE_NGN)} flat fare.
+        Book a pickup for a customer. Fare is quoted from road distance.
       </p>
 
       <form

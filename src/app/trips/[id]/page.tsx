@@ -164,11 +164,10 @@ export default function TripDetailPage() {
                 />
                 <DetailRow
                   label="Fare"
-                  value={`${formatNaira(trip.feeNgn)}${
-                    tripPaidOnline(trip)
+                  value={`${formatNaira(trip.feeNgn)}${tripPaidOnline(trip)
                       ? " · paid online"
                       : " · paid cash"
-                  }`}
+                    }`}
                 />
                 {trip.customerRole === "receiver" && trip.senderName ? (
                   <DetailRow label="From" value={trip.senderName} />
@@ -190,14 +189,6 @@ export default function TripDetailPage() {
                 <span className="num font-semibold">{formatNaira(trip.feeNgn)}</span>
                 {tripPaidOnline(trip) ? " · paid online" : " · pay cash to the rider"}
               </p>
-              {trip.deliveryPin ? (
-                <DeliveryPin
-                  pin={trip.deliveryPin}
-                  revealed={Boolean(trip.deliveryPinRevealed)}
-                  requested={Boolean(trip.deliveryPinRequested) && !trip.deliveryPinRevealed}
-                  revealing={revealPin.isPending}
-                />
-              ) : null}
             </>
           ) : null}
 
@@ -282,13 +273,12 @@ export default function TripDetailPage() {
                 <DetailRow label="Cancelled" value={formatDateTime(trip.updatedAt)} />
                 <DetailRow
                   label="Fare"
-                  value={`${formatNaira(trip.feeNgn)}${
-                    trip.paymentStatus === "refunded"
+                  value={`${formatNaira(trip.feeNgn)}${trip.paymentStatus === "refunded"
                       ? " · refunded"
                       : tripPaidOnline(trip)
                         ? " · paid online"
                         : " · never charged"
-                  }`}
+                    }`}
                 />
                 {trip.customerRole === "receiver" && trip.senderName ? (
                   <DetailRow label="From" value={trip.senderName} />

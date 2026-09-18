@@ -155,9 +155,12 @@ export default function RiderJobPage() {
     }
   }
 
+  const showMainJob = !askRelease && !(askPin && needsPin);
+  const showActionBar = showMainJob && phase !== "delivered";
+
   return (
     <div className="relative flex h-full flex-col bg-[#FAFAF7]">
-      <div className="relative min-h-36 flex-1">
+      <div className="relative min-h-28 flex-1">
         <CityMap
           className="absolute inset-0"
           mode="route"
@@ -177,137 +180,139 @@ export default function RiderJobPage() {
         />
       </div>
 
-      <div className="relative z-10 -mt-5 max-h-[72%] shrink-0 overflow-y-auto rounded-t-[28px] bg-[#FAFAF7] px-5 pt-4 pb-2">
-        {askRelease && canDrop ? (
-          <ReleasePanel
-            reason={releaseReason}
-            note={releaseNote}
-            error={releaseError}
-            pending={release.isPending}
-            onReason={setReleaseReason}
-            onNote={setReleaseNote}
-            onBack={() => {
-              setAskRelease(false);
-              setReleaseReason("");
-              setReleaseNote("");
-              setReleaseError("");
-            }}
-            onConfirm={() => {
-              tapFeedback();
-              void dropJob();
-            }}
-          />
-        ) : askPin && needsPin ? (
-          <PinPanel
-            pin={pin}
-            shared={Boolean(trip.deliveryPin && trip.deliveryPin.length === 4)}
-            asked={Boolean(trip.deliveryPinRequested)}
-            asking={requestPin.isPending}
-            error={proofError}
-            pending={advance.isPending}
-            skipOpen={skipOpen}
-            skipReason={skipReason}
-            onPin={setPin}
-            onRequest={() => {
-              tapFeedback();
-              setProofError("");
-              void requestPin.mutateAsync(params.id).catch((err) => {
-                setProofError(err instanceof Error ? err.message : "Could not ask for the PIN");
-              });
-            }}
-            onCancel={() => {
-              setAskPin(false);
-              setSkipOpen(false);
-              setProofError("");
-            }}
-            onConfirm={() => {
-              tapFeedback();
-              void next({ pin });
-            }}
-            onSkipOpen={() => setSkipOpen(true)}
-            onSkipReason={setSkipReason}
-            onSkipPhoto={setSkipPhoto}
-            onSkip={() => {
-              tapFeedback();
-              void next({
-                skipReason: skipReason.trim(),
-                photo: skipPhoto ?? undefined,
-              });
-            }}
-          />
-        ) : (
-          <>
-            <StatusStepper trip={trip} />
-            <p className="mt-4 font-display text-[13px] font-semibold tracking-[0.08em] text-[#8A8780] uppercase">
-              {pickup ? "Pickup" : "Drop-off"}
-            </p>
-            <a
-              href={maps}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-2 flex items-center gap-3"
-            >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#EEEDE8] text-brand">
-                <Navigation className="h-6 w-6" strokeWidth={2.2} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="font-display block text-[20px] leading-tight font-semibold tracking-[-0.03em]">
-                  {place}
-                </span>
-                <span className="mt-0.5 block text-[15px] font-medium text-brand">
-                  Show direction
-                </span>
-              </span>
-            </a>
-            <JobDetails
-              personLabel={pickup ? "Who to meet" : "Deliver to"}
-              name={pickup ? trip.senderName : trip.receiverName}
-              phone={pickup ? trip.senderPhone : trip.receiverPhone}
-              notes={trip.notes}
-              pickupFallbackPhone={dropoff ? trip.senderPhone : ""}
+      <div className="relative z-10 -mt-5 flex max-h-[min(78%,calc(100%-5rem))] shrink-0 flex-col rounded-t-[28px] bg-[#FAFAF7] pb-[var(--kb-nav)] shadow-[0_-8px_32px_rgba(15,61,46,0.1)]">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-4 pb-3">
+          {askRelease && canDrop ? (
+            <ReleasePanel
+              reason={releaseReason}
+              note={releaseNote}
+              error={releaseError}
+              pending={release.isPending}
+              onReason={setReleaseReason}
+              onNote={setReleaseNote}
+              onBack={() => {
+                setAskRelease(false);
+                setReleaseReason("");
+                setReleaseNote("");
+                setReleaseError("");
+              }}
+              onConfirm={() => {
+                tapFeedback();
+                void dropJob();
+              }}
             />
-            <p className="mt-3 text-[13px] text-[#8A8780]">
-              {tripPaidOnline(trip)
-                ? `Customer paid ${formatNaira(trip.feeNgn)} online`
-                : `Collect ${formatNaira(trip.feeNgn)} cash`}
-            </p>
+          ) : askPin && needsPin ? (
+            <PinPanel
+              pin={pin}
+              shared={Boolean(trip.deliveryPin && trip.deliveryPin.length === 4)}
+              asked={Boolean(trip.deliveryPinRequested)}
+              asking={requestPin.isPending}
+              error={proofError}
+              pending={advance.isPending}
+              skipOpen={skipOpen}
+              skipReason={skipReason}
+              onPin={setPin}
+              onRequest={() => {
+                tapFeedback();
+                setProofError("");
+                void requestPin.mutateAsync(params.id).catch((err) => {
+                  setProofError(err instanceof Error ? err.message : "Could not ask for the PIN");
+                });
+              }}
+              onCancel={() => {
+                setAskPin(false);
+                setSkipOpen(false);
+                setProofError("");
+              }}
+              onConfirm={() => {
+                tapFeedback();
+                void next({ pin });
+              }}
+              onSkipOpen={() => setSkipOpen(true)}
+              onSkipReason={setSkipReason}
+              onSkipPhoto={setSkipPhoto}
+              onSkip={() => {
+                tapFeedback();
+                void next({
+                  skipReason: skipReason.trim(),
+                  photo: skipPhoto ?? undefined,
+                });
+              }}
+            />
+          ) : (
+            <>
+              <StatusStepper trip={trip} />
+              <p className="mt-4 font-display text-[13px] font-semibold tracking-[0.08em] text-[#8A8780] uppercase">
+                {pickup ? "Pickup" : "Drop-off"}
+              </p>
+              <a
+                href={maps}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 flex items-center gap-3"
+              >
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#EEEDE8] text-brand">
+                  <Navigation className="h-6 w-6" strokeWidth={2.2} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="font-display block text-[20px] leading-tight font-semibold tracking-[-0.03em]">
+                    {place}
+                  </span>
+                  <span className="mt-0.5 block text-[15px] font-medium text-brand">
+                    Show direction
+                  </span>
+                </span>
+              </a>
+              <JobDetails
+                personLabel={pickup ? "Who to meet" : "Deliver to"}
+                name={pickup ? trip.senderName : trip.receiverName}
+                phone={pickup ? trip.senderPhone : trip.receiverPhone}
+                notes={trip.notes}
+                pickupFallbackPhone={dropoff ? trip.senderPhone : ""}
+              />
+              <p className="mt-3 text-[13px] text-[#8A8780]">
+                {tripPaidOnline(trip)
+                  ? `Customer paid ${formatNaira(trip.feeNgn)} online`
+                  : `Collect ${formatNaira(trip.feeNgn)} cash`}
+              </p>
+            </>
+          )}
+        </div>
 
-            {phase !== "delivered" ? (
-              <>
-                <SlideToAction
-                  key={phase}
-                  icon={action.icon}
-                  label={advance.isPending ? "…" : action.label}
-                  pidgin={action.pidgin}
-                  disabled={advance.isPending}
-                  onComplete={onAction}
-                />
-                <div className="mt-2 flex items-center justify-center gap-3 text-[13px] font-medium text-[#8A8780]">
-                  <a href={SUPPORT_TEL_URL} className="py-1">
-                    Call support
-                  </a>
-                  {canDrop ? (
-                    <>
-                      <span aria-hidden>·</span>
-                      <button
-                        type="button"
-                        className="py-1"
-                        onClick={() => {
-                          setReleaseError("");
-                          setReleaseReason("");
-                          setReleaseNote("");
-                          setAskRelease(true);
-                        }}
-                      >
-                        Cancel this job
-                      </button>
-                    </>
-                  ) : null}
-                </div>
-              </>
-            ) : null}
-          </>
-        )}
+        {showActionBar ? (
+          <div className="shrink-0 border-t border-black/5 bg-[#FAFAF7] px-5 pt-2.5 pb-2">
+            <SlideToAction
+              key={phase}
+              icon={action.icon}
+              label={advance.isPending ? "…" : action.label}
+              pidgin={action.pidgin}
+              disabled={advance.isPending}
+              onComplete={onAction}
+            />
+            <div className="mt-1.5 flex items-center justify-center gap-3 text-[13px] font-medium text-[#8A8780]">
+              <a href={SUPPORT_TEL_URL} className="py-1">
+                Call support
+              </a>
+              {canDrop ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <button
+                    type="button"
+                    className="py-1"
+                    onClick={() => {
+                      setReleaseError("");
+                      setReleaseReason("");
+                      setReleaseNote("");
+                      setAskRelease(true);
+                    }}
+                  >
+                    Cancel this job
+                  </button>
+                </>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -344,7 +349,9 @@ function SlideToAction({
 
   function travel() {
     const width = trackRef.current?.clientWidth ?? 0;
-    return Math.max(0, width - 68);
+    const thumb = 52; // h/w-[3.25rem]
+    const pad = 12; // p-1.5 × 2
+    return Math.max(0, width - thumb - pad);
   }
 
   function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
@@ -391,16 +398,16 @@ function SlideToAction({
   return (
     <div
       ref={trackRef}
-      className="relative mt-3 h-[4.75rem] w-full overflow-hidden rounded-[28px] bg-accent"
+      className="relative h-16 w-full touch-none select-none rounded-[28px] bg-accent p-1.5"
     >
       <div
         className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-16"
         style={{ opacity: fade }}
       >
-        <span className="font-display text-center text-[18px] font-bold tracking-[-0.03em]">
+        <span className="font-display text-center text-[17px] font-bold tracking-[-0.03em] text-[#1A1A16]">
           {label}
         </span>
-        <span className="text-[13px] font-medium text-[#1A1A16]/70">{pidgin}</span>
+        <span className="text-[12px] font-medium text-[#1A1A16]/65">{pidgin}</span>
       </div>
       <div
         role="slider"
@@ -422,10 +429,10 @@ function SlideToAction({
             complete();
           }
         }}
-        className="absolute top-1.5 left-1.5 z-10 flex h-14 w-14 cursor-grab touch-none items-center justify-center rounded-full bg-[#FAFAF7] text-[#1A1A16] shadow-[0_4px_16px_rgba(15,61,46,0.16)] active:cursor-grabbing"
+        className="relative z-10 flex h-13 w-13 shrink-0 cursor-grab items-center justify-center rounded-full bg-[#FAFAF7] text-[#1A1A16] shadow-[0_4px_14px_rgba(15,61,46,0.18)] active:cursor-grabbing"
         style={{ transform: `translateX(${thumbX}px)` }}
       >
-        <Icon className="h-7 w-7" strokeWidth={2.4} />
+        <Icon className="h-6 w-6" strokeWidth={2.4} />
       </div>
     </div>
   );

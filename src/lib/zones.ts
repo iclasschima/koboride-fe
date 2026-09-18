@@ -37,7 +37,7 @@ export const PRICING_ZONES: PricingZone[] = [
 
 const EARTH_RADIUS_KM = 6371;
 
-function haversineKm(
+export function distanceKmBetween(
   pickupLat: number,
   pickupLng: number,
   dropoffLat: number,
@@ -53,7 +53,7 @@ function haversineKm(
 }
 
 export function isInZone(zone: PricingZone, lat: number, lng: number): boolean {
-  return haversineKm(zone.centerLat, zone.centerLng, lat, lng) <= zone.radiusKm;
+  return distanceKmBetween(zone.centerLat, zone.centerLng, lat, lng) <= zone.radiusKm;
 }
 
 export function isInActiveServiceArea(lat: number, lng: number): boolean {

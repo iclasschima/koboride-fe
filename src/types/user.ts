@@ -86,6 +86,10 @@ export type PlatformSettings = {
   maxActiveOrders: number;
   platformCutPercent: number;
   clientRefreshNonce: number;
+  baseFeeNgn: number;
+  perKmFeeNgn: number;
+  minFareNgn: number;
+  onlinePaymentDiscountNgn: number;
 };
 
 export type ClientAppStatus = {

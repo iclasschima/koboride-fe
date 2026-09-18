@@ -109,7 +109,50 @@ export const RIDER_PHASES: RiderPhase[] = [
   "delivered",
 ];
 
+export const BASE_FEE_NGN = 400;
+export const PER_KM_FEE_NGN = 250;
+export const MIN_FARE_NGN = 650;
+/** @deprecated Prefer distance fare; kept for copy fallbacks. */
 export const YABA_FLAT_FEE_NGN = 1000;
+/** Online (Paystack) discount — funded from platform commission, not rider payout. */
+export const ONLINE_PAYMENT_DISCOUNT_NGN = 50;
+
+export type FareRates = {
+  baseFeeNgn: number;
+  perKmFeeNgn: number;
+  minFareNgn: number;
+  onlinePaymentDiscountNgn?: number;
+};
+
+/** Customer-facing fares always land on a ₦50 step — never show ₦818. */
+export function roundToDisplayPrice(rawFee: number): number {
+  if (!Number.isFinite(rawFee) || rawFee <= 0) return 0;
+  return Math.round(rawFee / 50) * 50;
+}
+
+/** Exact distance math, then round to nearest ₦50 for the list price. */
+export function feeFromDistanceKm(
+  distanceKm: number,
+  rates: FareRates = {
+    baseFeeNgn: BASE_FEE_NGN,
+    perKmFeeNgn: PER_KM_FEE_NGN,
+    minFareNgn: MIN_FARE_NGN,
+  },
+): number {
+  const km = Math.max(0, distanceKm);
+  const exact = rates.baseFeeNgn + km * rates.perKmFeeNgn;
+  return roundToDisplayPrice(Math.max(rates.minFareNgn, exact));
+}
+
+export function customerFeeNgn(
+  listFeeNgn: number,
+  paymentMethod: PaymentMethod = "cash",
+  onlineDiscountNgn = ONLINE_PAYMENT_DISCOUNT_NGN,
+): number {
+  if (paymentMethod !== "paystack") return roundToDisplayPrice(listFeeNgn);
+  const discount = Math.max(0, Math.min(onlineDiscountNgn, listFeeNgn));
+  return roundToDisplayPrice(listFeeNgn - discount);
+}
 
 export const CANCEL_REASONS = [
   "Ordered by mistake",

@@ -30,6 +30,9 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     pathname === "/rider" ||
     isTripDetail ||
     isRiderJob;
+  // Profile pages already have the install card — don't stack a banner on top.
+  const showInstallBanner =
+    showNav && !mapChrome && pathname !== "/profile" && pathname !== "/rider/profile";
 
   if (isAdmin) {
     return (
@@ -50,7 +53,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
           <div className="h-[var(--kb-nav)] shrink-0" aria-hidden />
         ) : null}
       </PullToRefresh>
-      {showNav && !mapChrome ? (
+      {showInstallBanner ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-[var(--kb-nav)] z-40">
           <AddToHomeScreenBanner />
         </div>
