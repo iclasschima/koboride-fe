@@ -24,6 +24,7 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
 
   const showRiderNav =
     isRider && pathname !== "/rider/login" && riderAuthenticated;
+  const showNav = showCustomerNav || showRiderNav;
   const mapChrome =
     pathname === "/" ||
     pathname === "/rider" ||
@@ -43,9 +44,16 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
       data-ptr-root
       className="kb-phone relative mx-auto flex w-full max-w-md flex-col overflow-hidden bg-[#FAFAF7] shadow-[0_0_80px_rgba(15,61,46,0.35)]"
     >
-      <PullToRefresh className="relative min-h-0 flex-1">{children}</PullToRefresh>
-      {(showCustomerNav || showRiderNav) && !mapChrome ? (
-        <AddToHomeScreenBanner />
+      <PullToRefresh className="relative min-h-0 flex-1">
+        {children}
+        {showNav && !mapChrome ? (
+          <div className="h-[var(--kb-nav)] shrink-0" aria-hidden />
+        ) : null}
+      </PullToRefresh>
+      {showNav && !mapChrome ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-[var(--kb-nav)] z-40">
+          <AddToHomeScreenBanner />
+        </div>
       ) : null}
       {showCustomerNav ? <BottomNav /> : null}
       {showRiderNav ? <RiderNav /> : null}

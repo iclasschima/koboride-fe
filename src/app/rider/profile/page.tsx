@@ -12,7 +12,7 @@ export default function RiderProfilePage() {
   const name = user?.name?.trim() || "Rider";
 
   return (
-    <div className="bg-[#FAFAF7] px-5 pt-8 pb-8">
+    <div className="min-h-full bg-[#FAFAF7] px-5 pt-[max(2rem,env(safe-area-inset-top))] pb-4">
       <Avatar src={user?.photoUrl} name={name} className="h-16 w-16 text-[22px]" />
       <h1 className="mt-4 font-display text-[28px] font-semibold tracking-[-0.04em]">
         {name}

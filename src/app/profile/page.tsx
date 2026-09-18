@@ -27,7 +27,7 @@ export default function ProfilePage() {
 
   if (!ready) {
     return (
-      <div className="bg-[#FAFAF7] px-4 pt-5 pb-8">
+      <div className="min-h-full bg-[#FAFAF7] px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4">
         <h1 className="font-display text-[28px] font-bold tracking-[-0.04em] text-[#1A1A16]">
           Account
         </h1>
@@ -40,7 +40,7 @@ export default function ProfilePage() {
 
   if (!authenticated) {
     return (
-      <div className="flex flex-col items-center bg-[#FAFAF7] px-6 pt-16 text-center">
+      <div className="flex min-h-full flex-col items-center bg-[#FAFAF7] px-6 pt-[max(4rem,calc(env(safe-area-inset-top)+2.5rem))] text-center">
         <button
           type="button"
           className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand font-display text-[22px] font-bold text-[#FAFAF7]"
@@ -83,7 +83,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="bg-[#FAFAF7] px-4 pt-5 pb-8">
+    <div className="min-h-full bg-[#FAFAF7] px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4">
       <header className="mb-6">
         <button
           type="button"

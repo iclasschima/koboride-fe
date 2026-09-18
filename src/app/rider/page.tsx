@@ -108,7 +108,7 @@ export default function RiderHomePage() {
         </div>
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 z-20 max-h-[46%] overflow-y-auto rounded-t-[28px] bg-[#FAFAF7] px-4 pt-3 pb-4 shadow-[0_-8px_32px_rgba(15,61,46,0.12)]">
+      <div className="absolute inset-x-0 bottom-[var(--kb-nav)] z-20 max-h-[46%] overflow-y-auto rounded-t-[28px] bg-[#FAFAF7] px-4 pt-3 pb-4 shadow-[0_-8px_32px_rgba(15,61,46,0.12)]">
         {job ? (
           <button
             type="button"

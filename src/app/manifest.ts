@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "KoboRide",
     short_name: "KoboRide",
-    description: "Send a package across Yaba on a bike. Pay the rider in cash.",
+    description: "Send a package across Yaba on a bike. Pay cash or card.",
     start_url: "/",
     scope: "/",
     display: "standalone",

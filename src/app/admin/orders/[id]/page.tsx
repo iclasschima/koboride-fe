@@ -138,6 +138,16 @@ export default function AdminOrderDetailPage() {
             Money
           </h2>
           <Row label="Fare" value={formatNaira(trip.feeNgn)} />
+          <Row
+            label="Customer paid"
+            value={
+              trip.paymentStatus === "refunded"
+                ? "Refunded"
+                : trip.paymentMethod === "paystack" && trip.paymentStatus === "paid"
+                  ? "Online"
+                  : "Cash to rider"
+            }
+          />
           <Row label="Rider payout" value={formatNaira(trip.payoutNgn)} />
           <Row label="Payout" value={trip.payoutPaid ? "Paid" : "Pending"} />
           {trip.deliveryPin ? <Row label="Delivery PIN" value={trip.deliveryPin} /> : null}

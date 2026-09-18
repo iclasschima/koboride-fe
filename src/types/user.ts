@@ -90,4 +90,5 @@ export type PlatformSettings = {
 
 export type ClientAppStatus = {
   nonce: number;
+  paystackEnabled?: boolean;
 };

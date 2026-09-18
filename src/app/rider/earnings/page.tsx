@@ -32,7 +32,7 @@ export default function RiderEarningsPage() {
   }
 
   return (
-    <div className="bg-[#FAFAF7] px-5 pt-6 pb-8">
+    <div className="min-h-full bg-[#FAFAF7] px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-4">
       <h1 className="font-display text-[22px] font-semibold tracking-[-0.03em]">
         Jobs
       </h1>
@@ -68,30 +68,37 @@ export default function RiderEarningsPage() {
             </div>
           </div>
           <ul className="mt-3 divide-y divide-black/5">
-            {trips.map((trip) => (
-              <li key={trip.id} className="py-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-display truncate text-[15px] font-semibold">
-                      {trip.dropoff}
-                    </p>
-                    <p className="text-[12px] text-[#8A8780]">
-                      {formatDateTime(trip.createdAt)}
-                      {tripDurationSeconds(trip) != null
-                        ? ` · ${formatDuration(tripDurationSeconds(trip)!)}`
-                        : ""}
+            {trips.map((trip) => {
+              const duration = tripDurationSeconds(trip);
+              return (
+                <li key={trip.id} className="py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[12px] text-[#8A8780]">
+                        From {trip.pickup}
+                      </p>
+                      <p className="font-display truncate text-[15px] font-semibold">
+                        To {trip.dropoff}
+                      </p>
+                      <p className="mt-1 text-[12px] text-[#8A8780]">
+                        {formatDateTime(trip.completedAt ?? trip.createdAt)}
+                        {duration != null ? ` · took ${formatDuration(duration)}` : ""}
+                      </p>
+                    </div>
+                    <p className="num shrink-0 text-[15px] font-semibold">
+                      {formatNaira(trip.payoutNgn)}
                     </p>
                   </div>
-                  <p className="num shrink-0 text-[15px] font-semibold">
-                    {formatNaira(trip.payoutNgn)}
+                  <p className="mt-1 text-[12px] text-[#8A8780]">
+                    {trip.paymentMethod === "paystack" && trip.paymentStatus === "paid"
+                      ? `Paid online ${formatNaira(trip.feeNgn)}`
+                      : `Collected ${formatNaira(trip.feeNgn)}`}{" "}
+                    · commission{" "}
+                    {formatNaira(commissionNgn(trip.feeNgn, trip.payoutNgn))}
                   </p>
-                </div>
-                <p className="mt-1 text-[12px] text-[#8A8780]">
-                  Collected {formatNaira(trip.feeNgn)} · commission{" "}
-                  {formatNaira(commissionNgn(trip.feeNgn, trip.payoutNgn))}
-                </p>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         </>
       )}

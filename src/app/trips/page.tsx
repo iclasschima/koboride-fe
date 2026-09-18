@@ -14,7 +14,7 @@ export default function TripsPage() {
 
   if (!ready) {
     return (
-      <div className="bg-[#FAFAF7] px-4 pt-5 pb-8">
+      <div className="min-h-full bg-[#FAFAF7] px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4">
         <h1 className="font-display text-[28px] font-bold tracking-[-0.04em] text-[#1A1A16]">
           Orders
         </h1>
@@ -38,7 +38,7 @@ export default function TripsPage() {
   }
 
   return (
-    <div className="bg-[#FAFAF7] px-4 pt-5 pb-8">
+    <div className="min-h-full bg-[#FAFAF7] px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4">
       <h1 className="mb-4 font-display text-[28px] font-bold tracking-[-0.04em] text-[#1A1A16]">
         Orders
       </h1>

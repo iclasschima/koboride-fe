@@ -11,9 +11,16 @@ import { Button } from "@/components/ui/Button";
 import { StatusStepper } from "@/components/ui/StatusStepper";
 import { NotifyPrompt } from "@/components/notify/NotifyPrompt";
 import { ReportOrderButton } from "@/components/support/WhatsAppSupport";
-import { formatNaira, formatDuration, tripDurationSeconds } from "@/lib/format";
+import { formatDateTime, formatNaira, formatDuration, tripDurationSeconds } from "@/lib/format";
 import { useCancelOrderMutation, useRevealDeliveryPinMutation, useTrip } from "@/lib/query/hooks";
-import { CANCEL_REASONS, canCustomerCancel, isActiveTrip, tripHeadline } from "@/types/request";
+import {
+  CANCEL_REASONS,
+  canCustomerCancel,
+  isActiveTrip,
+  tripHeadline,
+  tripPaidOnline,
+  type Trip,
+} from "@/types/request";
 import { ApiError } from "@/lib/api/client";
 
 const PEEK = 0.38;
@@ -112,6 +119,7 @@ export default function TripDetailPage() {
       </header>
 
       <AppSheet
+        fitContent
         snapPoints={[PEEK, OPEN]}
         activeSnapPoint={snap}
         setActiveSnapPoint={setSnap}
@@ -120,12 +128,55 @@ export default function TripDetailPage() {
           {searching || assigned || trip.status === "completed" ? (
             <div className="mb-4">
               <StatusStepper trip={trip} />
-              {trip.status === "completed" && tripDurationSeconds(trip) != null ? (
+              {searching || assigned ? <NotifyPrompt /> : null}
+            </div>
+          ) : null}
+
+          {trip.status === "completed" ? (
+            <div>
+              <p className="font-display text-[22px] font-semibold tracking-[-0.03em]">
+                Package delivered
+              </p>
+              {tripDurationSeconds(trip) != null ? (
                 <p className="mt-2 text-[13px] text-[#8A8780]">
                   Completed in {formatDuration(tripDurationSeconds(trip)!)}
                 </p>
               ) : null}
-              {searching || assigned ? <NotifyPrompt /> : null}
+              {trip.riderName ? (
+                <div className="mt-4 flex items-center gap-3">
+                  <Avatar
+                    src={trip.riderPhotoUrl}
+                    name={trip.riderName}
+                    className="h-11 w-11 text-[16px]"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display text-[15px] font-semibold">{trip.riderName}</p>
+                    <p className="text-[13px] text-[#8A8780]">Your rider</p>
+                  </div>
+                </div>
+              ) : null}
+              <TripRoute trip={trip} />
+              <dl className="mt-3 space-y-1.5">
+                <DetailRow label="Ordered" value={formatDateTime(trip.createdAt)} />
+                <DetailRow
+                  label="Delivered"
+                  value={formatDateTime(trip.completedAt ?? trip.updatedAt)}
+                />
+                <DetailRow
+                  label="Fare"
+                  value={`${formatNaira(trip.feeNgn)}${
+                    tripPaidOnline(trip)
+                      ? " · paid online"
+                      : " · paid cash"
+                  }`}
+                />
+                {trip.customerRole === "receiver" && trip.senderName ? (
+                  <DetailRow label="From" value={trip.senderName} />
+                ) : trip.receiverName ? (
+                  <DetailRow label="For" value={trip.receiverName} />
+                ) : null}
+                {trip.notes ? <DetailRow label="Package" value={trip.notes} /> : null}
+              </dl>
             </div>
           ) : null}
 
@@ -137,7 +188,7 @@ export default function TripDetailPage() {
               </p>
               <p className="mt-2 text-[13px] text-[#8A8780]">
                 <span className="num font-semibold">{formatNaira(trip.feeNgn)}</span>
-                {" · pay cash to the rider"}
+                {tripPaidOnline(trip) ? " · paid online" : " · pay cash to the rider"}
               </p>
               {trip.deliveryPin ? (
                 <DeliveryPin
@@ -175,9 +226,19 @@ export default function TripDetailPage() {
                 ) : null}
               </div>
               <p className="mt-3 text-[13px] text-[#8A8780]">
-                Pay{" "}
-                <span className="num font-semibold">{formatNaira(trip.feeNgn)}</span>{" "}
-                cash to the rider
+                {tripPaidOnline(trip) ? (
+                  <>
+                    Paid{" "}
+                    <span className="num font-semibold">{formatNaira(trip.feeNgn)}</span>{" "}
+                    online
+                  </>
+                ) : (
+                  <>
+                    Pay{" "}
+                    <span className="num font-semibold">{formatNaira(trip.feeNgn)}</span>{" "}
+                    cash to the rider
+                  </>
+                )}
               </p>
               {trip.deliveryPin ? (
                 <DeliveryPin
@@ -210,6 +271,32 @@ export default function TripDetailPage() {
               {trip.cancelReason ? (
                 <p className="mt-2 text-[13px] text-[#8A8780]">{trip.cancelReason}</p>
               ) : null}
+              {trip.paymentStatus === "refunded" ? (
+                <p className="mt-2 text-[13px] text-[#8A8780]">
+                  Your payment is being refunded to your bank or card.
+                </p>
+              ) : null}
+              <TripRoute trip={trip} />
+              <dl className="mt-3 space-y-1.5">
+                <DetailRow label="Ordered" value={formatDateTime(trip.createdAt)} />
+                <DetailRow label="Cancelled" value={formatDateTime(trip.updatedAt)} />
+                <DetailRow
+                  label="Fare"
+                  value={`${formatNaira(trip.feeNgn)}${
+                    trip.paymentStatus === "refunded"
+                      ? " · refunded"
+                      : tripPaidOnline(trip)
+                        ? " · paid online"
+                        : " · never charged"
+                  }`}
+                />
+                {trip.customerRole === "receiver" && trip.senderName ? (
+                  <DetailRow label="From" value={trip.senderName} />
+                ) : trip.receiverName ? (
+                  <DetailRow label="For" value={trip.receiverName} />
+                ) : null}
+                {trip.notes ? <DetailRow label="Package" value={trip.notes} /> : null}
+              </dl>
             </div>
           ) : null}
         </div>
@@ -221,8 +308,12 @@ export default function TripDetailPage() {
                 <div className="space-y-3">
                   <p className="text-center text-[13px] text-[#8A8780]">
                     {assigned
-                      ? "The rider is already on the way. Why are you cancelling?"
-                      : "Why are you cancelling?"}
+                      ? tripPaidOnline(trip)
+                        ? "The rider is already on the way. We’ll refund the fare to your bank or card."
+                        : "The rider is already on the way. Why are you cancelling?"
+                      : tripPaidOnline(trip)
+                        ? "We’ll refund the fare to your bank or card."
+                        : "Why are you cancelling?"}
                   </p>
                   <div className="flex flex-wrap justify-center gap-1.5">
                     {CANCEL_REASONS.map((reason) => (
@@ -258,7 +349,11 @@ export default function TripDetailPage() {
                     }
                     onClick={() => void handleCancel()}
                   >
-                    {cancelOrder.isPending ? "Cancelling…" : "Yes, cancel"}
+                    {cancelOrder.isPending
+                      ? "Cancelling…"
+                      : tripPaidOnline(trip)
+                        ? "Cancel and refund"
+                        : "Yes, cancel"}
                   </Button>
                   <button
                     type="button"
@@ -315,6 +410,41 @@ export default function TripDetailPage() {
           ) : null}
         </div>
       </AppSheet>
+    </div>
+  );
+}
+
+function TripRoute({ trip }: { trip: Trip }) {
+  return (
+    <div className="mt-4 flex gap-3 rounded-2xl bg-[#EEEDE8] px-4 py-3">
+      <div className="flex flex-col items-center pt-1.5">
+        <span className="h-2 w-2 rounded-full bg-brand" />
+        <span className="my-1 w-px flex-1 bg-[#C9C6BE]" />
+        <span className="h-2 w-2 rounded-full bg-accent" />
+      </div>
+      <div className="min-w-0 flex-1 space-y-2.5">
+        <div>
+          <p className="text-[11px] font-medium tracking-[0.06em] text-[#8A8780] uppercase">
+            Pickup
+          </p>
+          <p className="text-[14px] font-medium text-[#1A1A16]">{trip.pickup}</p>
+        </div>
+        <div>
+          <p className="text-[11px] font-medium tracking-[0.06em] text-[#8A8780] uppercase">
+            Drop-off
+          </p>
+          <p className="text-[14px] font-medium text-[#1A1A16]">{trip.dropoff}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4 text-[13px]">
+      <dt className="shrink-0 text-[#8A8780]">{label}</dt>
+      <dd className="min-w-0 text-right font-medium text-[#1A1A16]">{value}</dd>
     </div>
   );
 }

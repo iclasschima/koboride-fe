@@ -1,6 +1,7 @@
 import { ApiError, api } from "@/lib/api/client";
 import type { ClientAppStatus } from "@/types/user";
 import type { CreateTripInput, Trip } from "@/types/request";
+import type { PaystackCheckout } from "@/lib/paystack";
 
 export async function getClientAppStatus(): Promise<ClientAppStatus> {
   return api.get<ClientAppStatus>("/api/app", { token: null });
@@ -42,6 +43,23 @@ export async function getRiderTrip(id: string): Promise<Trip> {
 export async function createTrip(input: CreateTripInput): Promise<Trip> {
   const data = await api.post<{ trip: Trip }>("/api/orders", input);
   return data.trip;
+}
+
+export async function initializeOrderPayment(input: CreateTripInput): Promise<PaystackCheckout> {
+  return api.post<PaystackCheckout>("/api/orders/pay/initialize", {
+    pickup: input.pickup,
+    dropoff: input.dropoff,
+    notes: input.notes,
+    customerRole: input.customerRole,
+    senderName: input.senderName,
+    senderPhone: input.senderPhone,
+    receiverName: input.receiverName,
+    receiverPhone: input.receiverPhone,
+    pickupLat: input.pickupLat,
+    pickupLng: input.pickupLng,
+    dropoffLat: input.dropoffLat,
+    dropoffLng: input.dropoffLng,
+  });
 }
 
 export type FareEstimate = {

@@ -173,7 +173,7 @@ export function PullToRefresh({
           Release to refresh
         </p>
       ) : null}
-      <div className="relative min-h-0 flex-1">{children}</div>
+      <div className="relative min-h-full w-full">{children}</div>
     </div>
   );
 }

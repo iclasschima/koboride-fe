@@ -11,7 +11,20 @@ type AppSheetProps = {
   className?: string;
   /** Size to content instead of a viewport fraction — use for the home peek. */
   autoHeight?: boolean;
+  /** Let the snap point act as a floor so content is never cut off. */
+  fitContent?: boolean;
 };
+
+/** Content taller than the snap point pushes the sheet up, never past the screen. */
+function sheetStyle(
+  autoHeight: boolean,
+  fitContent: boolean,
+  snap: number,
+): React.CSSProperties | undefined {
+  if (autoHeight) return undefined;
+  const height = `${Math.min(0.94, Math.max(0.16, snap)) * 100}%`;
+  return fitContent ? { minHeight: height, maxHeight: "94%" } : { height };
+}
 
 export function AppSheet({
   children,
@@ -20,6 +33,7 @@ export function AppSheet({
   setActiveSnapPoint,
   className,
   autoHeight = false,
+  fitContent = false,
 }: AppSheetProps) {
   const startY = useRef(0);
   const startSnap = useRef(0);
@@ -54,15 +68,12 @@ export function AppSheet({
         "absolute inset-x-0 bottom-0 z-30 flex flex-col rounded-t-[28px] bg-[#FAFAF7]",
         "shadow-[0_-16px_48px_rgba(15,61,46,0.14)]",
         autoHeight ? "h-auto overflow-visible" : "overflow-hidden",
+        fitContent && "h-auto",
         !liveDrag &&
-          "motion-safe:transition-[height] motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.32,0.72,0,1)]",
+          "motion-safe:transition-[height,min-height] motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.32,0.72,0,1)]",
         className,
       )}
-      style={
-        autoHeight
-          ? undefined
-          : { height: `${Math.min(0.94, Math.max(0.16, snap)) * 100}%` }
-      }
+      style={sheetStyle(autoHeight, fitContent, snap)}
       aria-label="Sheet"
     >
       <button

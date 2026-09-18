@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     template: "%s · KoboRide",
   },
   description:
-    "Send a package across Yaba on a bike. Pay the rider in cash.",
+    "Send a package across Yaba on a bike. Pay cash or card.",
   applicationName: "KoboRide",
   appleWebApp: {
     capable: true,

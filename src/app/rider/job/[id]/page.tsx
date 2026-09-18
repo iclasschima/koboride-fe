@@ -17,7 +17,8 @@ import {
   useRequestDeliveryPinMutation,
   useRiderTrip,
 } from "@/lib/query/hooks";
-import { canRiderRelease, RELEASE_REASONS, type RiderPhase } from "@/types/request";
+import { canRiderRelease, RELEASE_REASONS, tripPaidOnline, type RiderPhase } from "@/types/request";
+import { formatNaira } from "@/lib/format";
 
 const SKIP_REASONS = [
   "Phone died",
@@ -265,6 +266,11 @@ export default function RiderJobPage() {
               notes={trip.notes}
               pickupFallbackPhone={dropoff ? trip.senderPhone : ""}
             />
+            <p className="mt-3 text-[13px] text-[#8A8780]">
+              {tripPaidOnline(trip)
+                ? `Customer paid ${formatNaira(trip.feeNgn)} online`
+                : `Collect ${formatNaira(trip.feeNgn)} cash`}
+            </p>
 
             {phase !== "delivered" ? (
               <>

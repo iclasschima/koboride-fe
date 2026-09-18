@@ -16,10 +16,10 @@ export function BottomNav() {
 
   return (
     <nav
-      className="relative z-20 w-full shrink-0 border-t border-black/5 bg-[#FAFAF7] px-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1"
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-50 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       aria-label="Main"
     >
-      <ul className="grid grid-cols-3">
+      <ul className="pointer-events-auto grid grid-cols-3 rounded-[28px] bg-[#FAFAF7]/92 px-1.5 py-1.5 shadow-[0_12px_40px_rgba(15,61,46,0.18)] ring-1 ring-black/6 backdrop-blur-xl">
         {TABS.map((tab) => {
           const active =
             tab.href === "/"
@@ -31,8 +31,10 @@ export function BottomNav() {
               <Link
                 href={tab.href}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 px-1 py-1.5 text-[10px] font-semibold tracking-[-0.01em] transition-colors touch-manipulation",
-                  active ? "text-[#1A1A16]" : "text-[#8A8780]",
+                  "flex flex-col items-center gap-0.5 rounded-[22px] px-1 py-2 text-[10px] font-semibold tracking-[-0.01em] transition-colors touch-manipulation",
+                  active
+                    ? "bg-[#EEEDE8] text-brand"
+                    : "text-[#8A8780] active:bg-[#EEEDE8]/70",
                 )}
               >
                 <Icon

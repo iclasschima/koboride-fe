@@ -55,7 +55,7 @@ export default function HomePage() {
         </button>
       </div>
 
-      <div className="absolute right-3 bottom-36 z-20">
+      <div className="absolute right-3 bottom-[calc(var(--kb-nav)+11rem)] z-20">
         <button
           type="button"
           className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FAFAF7] text-[#1A1A16] shadow-[0_8px_24px_rgba(15,61,46,0.14)]"

@@ -14,14 +14,15 @@ import {
   type GooglePlaceSuggestion,
 } from "@/lib/api/places";
 import { ApiError } from "@/lib/api/client";
-import { estimateFare } from "@/lib/api/requests";
+import { estimateFare, initializeOrderPayment } from "@/lib/api/requests";
 import { SEARCH_PLACES, type Place } from "@/lib/places";
 import { quoteFee, isInActiveServiceArea } from "@/lib/fare";
 import { formatNaira } from "@/lib/format";
-import { useCreateTripMutation } from "@/lib/query/hooks";
+import { useClientAppStatus, useCreateTripMutation } from "@/lib/query/hooks";
 import { activatePush, primePushPermission } from "@/lib/push";
 import { cn } from "@/lib/cn";
-import { tripHeadline, type CustomerRole, type Trip } from "@/types/request";
+import { tripHeadline, type CustomerRole, type PaymentMethod, type Trip } from "@/types/request";
+import { openPaystack } from "@/lib/paystack";
 
 function newSession() {
   return crypto.randomUUID();
@@ -48,6 +49,8 @@ export function BookingSheet({
   const router = useRouter();
   const { authenticated, openAuth, user } = useAuth();
   const createTrip = useCreateTripMutation();
+  const { data: appStatus } = useClientAppStatus();
+  const paystackEnabled = Boolean(appStatus?.paystackEnabled);
 
   const [snap, setSnap] = useState<number | string | null>(PEEK);
   const [step, setStep] = useState<Step>("peek");
@@ -64,6 +67,8 @@ export function BookingSheet({
   const [customerRole, setCustomerRole] = useState<CustomerRole>("sender");
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("paystack");
+  const [paying, setPaying] = useState(false);
   const [error, setError] = useState("");
   const [distanceError, setDistanceError] = useState("");
   const [checkingRange, setCheckingRange] = useState(false);
@@ -286,6 +291,8 @@ export function BookingSheet({
     setCustomerRole("sender");
     setContactName("");
     setContactPhone("");
+    setPaymentMethod("paystack");
+    setPaying(false);
     setError("");
     setDistanceError("");
     setCheckingRange(false);
@@ -302,20 +309,36 @@ export function BookingSheet({
     void activatePush("customer");
     const meName = user?.name?.trim() || "Customer";
     const mePhone = user?.phone ?? "";
+    const payload = {
+      pickup: pickupPlace.name,
+      dropoff: dropoffPlace.name,
+      notes,
+      customerRole,
+      senderName: sending ? meName : contactName.trim(),
+      senderPhone: sending ? mePhone : contactPhone.trim(),
+      receiverName: sending ? contactName.trim() : meName,
+      receiverPhone: sending ? contactPhone.trim() : mePhone,
+      pickupLat: pickupPlace.lat,
+      pickupLng: pickupPlace.lng,
+      dropoffLat: dropoffPlace.lat,
+      dropoffLng: dropoffPlace.lng,
+    };
     try {
+      if (paystackEnabled && paymentMethod === "paystack") {
+        setPaying(true);
+        const checkout = await initializeOrderPayment(payload);
+        const reference = await openPaystack(checkout);
+        const trip = await createTrip.mutateAsync({
+          ...payload,
+          paymentMethod: "paystack",
+          paystackReference: reference,
+        });
+        router.push(`/trips/${trip.id}`);
+        return;
+      }
       const trip = await createTrip.mutateAsync({
-        pickup: pickupPlace.name,
-        dropoff: dropoffPlace.name,
-        notes,
-        customerRole,
-        senderName: sending ? meName : contactName.trim(),
-        senderPhone: sending ? mePhone : contactPhone.trim(),
-        receiverName: sending ? contactName.trim() : meName,
-        receiverPhone: sending ? contactPhone.trim() : mePhone,
-        pickupLat: pickupPlace.lat,
-        pickupLng: pickupPlace.lng,
-        dropoffLat: dropoffPlace.lat,
-        dropoffLng: dropoffPlace.lng,
+        ...payload,
+        paymentMethod: "cash",
       });
       router.push(`/trips/${trip.id}`);
     } catch (err) {
@@ -326,6 +349,8 @@ export function BookingSheet({
         return;
       }
       setError(err instanceof Error ? err.message : "Could not create request");
+    } finally {
+      setPaying(false);
     }
   }
 
@@ -335,7 +360,7 @@ export function BookingSheet({
       activeSnapPoint={snap}
       setActiveSnapPoint={setSnap}
       autoHeight={step !== "search"}
-      className="bottom-0 z-40"
+      className="bottom-[var(--kb-nav)] z-40"
     >
       <div className="flex min-h-0 flex-1 flex-col px-5 pb-5 pt-1">
         {activeTrip && step === "peek" ? (
@@ -400,10 +425,10 @@ export function BookingSheet({
                   <ShoppingBag className="h-5 w-5" strokeWidth={2.1} />
                 </span>
                 <span className="mt-3 font-display text-[16px] leading-tight font-semibold tracking-[-0.02em] text-[#5C5A54]">
-                  Purchase Errand
+                  Buy & deliver
                 </span>
                 <span className="mt-0.5 text-[12px] text-[#8A8780]">
-                  Buy something
+                  We shop for you
                 </span>
               </div>
             </div>
@@ -711,8 +736,49 @@ export function BookingSheet({
             <p className="mt-2 text-[13px] text-[#8A8780]">
               Flat rate ·{" "}
               <span className="num font-semibold">{formatNaira(fee)}</span>
-              {" · pay cash to the rider"}
             </p>
+            {paystackEnabled ? (
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  className={cn(
+                    "rounded-2xl px-3 py-3 text-left",
+                    paymentMethod === "paystack" ? "bg-brand text-[#FAFAF7]" : "bg-[#EEEDE8]",
+                  )}
+                  onClick={() => setPaymentMethod("paystack")}
+                >
+                  <p className="font-display text-[15px] font-semibold">Pay now</p>
+                  <p
+                    className={cn(
+                      "mt-0.5 text-[12px]",
+                      paymentMethod === "paystack" ? "text-white/70" : "text-[#8A8780]",
+                    )}
+                  >
+                    Card or transfer
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "rounded-2xl px-3 py-3 text-left",
+                    paymentMethod === "cash" ? "bg-brand text-[#FAFAF7]" : "bg-[#EEEDE8]",
+                  )}
+                  onClick={() => setPaymentMethod("cash")}
+                >
+                  <p className="font-display text-[15px] font-semibold">I'll pay cash</p>
+                  <p
+                    className={cn(
+                      "mt-0.5 text-[12px]",
+                      paymentMethod === "cash" ? "text-white/70" : "text-[#8A8780]",
+                    )}
+                  >
+                    Pay the rider
+                  </p>
+                </button>
+              </div>
+            ) : (
+              <p className="mt-2 text-[13px] text-[#8A8780]">Pay cash to the rider</p>
+            )}
             {error ? (
               <p className="mt-3 text-[13px] font-medium text-danger">{error}</p>
             ) : null}
@@ -725,10 +791,16 @@ export function BookingSheet({
             </button>
             <Button
               className="w-full"
-              disabled={createTrip.isPending}
+              disabled={createTrip.isPending || paying}
               onClick={() => void findRider()}
             >
-              {createTrip.isPending ? "Starting…" : "Find a rider"}
+              {paying
+                ? "Paying…"
+                : createTrip.isPending
+                  ? "Starting…"
+                  : paymentMethod === "paystack"
+                    ? `Pay ${formatNaira(fee)}`
+                    : "Find a rider"}
             </Button>
           </div>
         ) : null}

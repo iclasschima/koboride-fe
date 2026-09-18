@@ -13,6 +13,9 @@ export type RiderPhase =
 
 export type CustomerRole = "sender" | "receiver";
 
+export type PaymentMethod = "cash" | "paystack";
+export type PaymentStatus = "unpaid" | "paid" | "refunded";
+
 /** A rider handing a job back before pickup, kept for ops. */
 export type TripRelease = {
   id: string;
@@ -44,6 +47,10 @@ export type Trip = {
   customerPhone: string | null;
   payoutNgn: number;
   payoutPaid: boolean;
+  paymentMethod?: PaymentMethod;
+  paymentStatus?: PaymentStatus;
+  paidAt?: string | null;
+  refundedAt?: string | null;
   distanceKm: number;
   deliveryPin?: string | null;
   deliveryPinRevealed?: boolean;
@@ -76,6 +83,8 @@ export type CreateTripInput = {
   pickupLng: number;
   dropoffLat: number;
   dropoffLng: number;
+  paymentMethod?: PaymentMethod;
+  paystackReference?: string;
 };
 
 export const STATUS_LABEL: Record<TripStatus, string> = {
@@ -136,6 +145,10 @@ export function canRiderRelease(trip: Trip): boolean {
 
 export function isActiveTrip(trip: Trip): boolean {
   return trip.status === "dispatching" || trip.status === "in_progress";
+}
+
+export function tripPaidOnline(trip: Pick<Trip, "paymentMethod" | "paymentStatus">): boolean {
+  return trip.paymentMethod === "paystack" && trip.paymentStatus === "paid";
 }
 
 export function tripHeadline(trip: Trip): string {
