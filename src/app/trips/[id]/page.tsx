@@ -119,14 +119,15 @@ export default function TripDetailPage() {
       </header>
 
       <AppSheet
-        fitContent
+        autoHeight
         snapPoints={[PEEK, OPEN]}
         activeSnapPoint={snap}
         setActiveSnapPoint={setSnap}
+        className="pb-[calc(var(--kb-nav)+0.25rem)]"
       >
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-1">
+        <div className="px-5 pt-1">
           {searching || assigned || trip.status === "completed" ? (
-            <div className="mb-4">
+            <div className="mb-3">
               <StatusStepper trip={trip} />
               {searching || assigned ? <NotifyPrompt /> : null}
             </div>
@@ -291,7 +292,7 @@ export default function TripDetailPage() {
           ) : null}
         </div>
 
-        <div className="shrink-0 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
+        <div className="px-5 pt-3">
           {showCancel ? (
             <div>
               {askCancel ? (

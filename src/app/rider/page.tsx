@@ -14,7 +14,7 @@ import {
   useRiderEarnings,
   useRiderMe,
 } from "@/lib/query/hooks";
-import { formatKm, formatNaira } from "@/lib/format";
+import { formatKm, formatNaira, formatTimeAgo } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { tripPaidOnline, type Trip } from "@/types/request";
 
@@ -228,7 +228,7 @@ function AwaitingRow({
           <p className="mt-2 truncate text-[14px] text-[#5C5A54]">{trip.dropoff}</p>
           <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-[#8A8780]">
             <span className="num font-medium text-[#1A1A16]">
-              {formatNaira(trip.payoutNgn)}
+              {formatNaira(trip.feeNgn)}
             </span>
             <span aria-hidden>·</span>
             <span>{formatKm(trip.distanceKm)}</span>
@@ -236,6 +236,8 @@ function AwaitingRow({
             <span className={paidOnline ? "font-medium text-success" : undefined}>
               {paidOnline ? "Paid online" : "Cash"}
             </span>
+            <span aria-hidden>·</span>
+            <span>{formatTimeAgo(trip.createdAt)}</span>
           </div>
         </div>
       </div>

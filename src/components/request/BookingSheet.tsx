@@ -102,6 +102,7 @@ export function BookingSheet({
   const [checkingRange, setCheckingRange] = useState(false);
   const sessionRef = useRef(newSession());
 
+  const payingOnline = paystackEnabled && paymentMethod === "paystack";
   const pickup = pickupPlace?.name ?? "";
   const dropoff = dropoffPlace?.name ?? "";
   const typed = query.trim();
@@ -117,11 +118,9 @@ export function BookingSheet({
 
   const listFee = quotedListFee;
   const fee =
-    paystackEnabled && paymentMethod === "paystack" && quotedOnlineFee > 0
-      ? quotedOnlineFee
-      : listFee;
+    payingOnline && quotedOnlineFee > 0 ? quotedOnlineFee : listFee;
   const onlineDiscount =
-    paystackEnabled && paymentMethod === "paystack" && listFee > fee ? listFee - fee : 0;
+    payingOnline && listFee > fee ? listFee - fee : 0;
 
   useEffect(() => {
     if (!pickupPlace || !dropoffPlace) {
@@ -397,7 +396,7 @@ export function BookingSheet({
       dropoffLng: dropoffPlace.lng,
     };
     try {
-      if (paystackEnabled && paymentMethod === "paystack") {
+      if (payingOnline) {
         setPaying(true);
         const checkout = await initializeOrderPayment(payload);
         const reference = await openPaystack(checkout);
@@ -900,7 +899,7 @@ export function BookingSheet({
             ) : (
               <p className="mt-2 text-[13px] text-[#8A8780]">Pay cash to the rider</p>
             )}
-            {paystackEnabled && paymentMethod === "paystack" ? (
+            {paystackEnabled && payingOnline ? (
               <p className="mt-3 text-[13px] text-[#8A8780]">
                 If you cancel, your payment is refunded automatically to your account.
               </p>
@@ -917,7 +916,7 @@ export function BookingSheet({
                 ? "Paying…"
                 : createTrip.isPending
                   ? "Starting…"
-                  : paymentMethod === "paystack"
+                  : payingOnline
                     ? `Pay ${formatNaira(fee)}`
                     : "Find a rider"}
             </Button>
