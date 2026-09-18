@@ -425,10 +425,10 @@ export function BookingSheet({
                   <ShoppingBag className="h-5 w-5" strokeWidth={2.1} />
                 </span>
                 <span className="mt-3 font-display text-[16px] leading-tight font-semibold tracking-[-0.02em] text-[#5C5A54]">
-                  Buy & deliver
+                  Get me something
                 </span>
                 <span className="mt-0.5 text-[12px] text-[#8A8780]">
-                  We shop for you
+                  Groceries, meds, anything
                 </span>
               </div>
             </div>
