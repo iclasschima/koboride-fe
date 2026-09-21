@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, LocateFixed, MapPin, Package, ShoppingBag, Star, User } from "lucide-react";
+import { ChevronLeft, History, LocateFixed, MapPin, Package, ShoppingBag, Star } from "lucide-react";
 import { NigeriaPhoneField } from "@/components/auth/NigeriaPhoneField";
 import { AppSheet } from "@/components/ui/AppSheet";
 import { Button } from "@/components/ui/Button";
@@ -16,11 +16,12 @@ import {
 } from "@/lib/api/places";
 import { ApiError } from "@/lib/api/client";
 import { estimateFare, initializeOrderPayment } from "@/lib/api/requests";
-import { SEARCH_PLACES, type Place } from "@/lib/places";
-import { quoteFee, isInActiveServiceArea } from "@/lib/fare";
-import { formatNaira } from "@/lib/format";
+import { recentDeliveredPlaces, samePlace, SAME_PLACE_MESSAGE, type Place } from "@/lib/places";
+import { deliveryRangeError, DEFAULT_MAX_DELIVERY_KM, quoteFee } from "@/lib/fare";
+import { formatKm, formatNaira } from "@/lib/format";
 import { NG_PHONE_ERROR, normalizeNgPhone } from "@/lib/phone";
-import { useClientAppStatus, useCreateTripMutation } from "@/lib/query/hooks";
+import { useClientAppStatus, useCreateTripMutation, useTrips } from "@/lib/query/hooks";
+import { distanceKmBetween, isInLagos } from "@/lib/zones";
 import { activatePush, primePushPermission } from "@/lib/push";
 import { cn } from "@/lib/cn";
 import {
@@ -37,10 +38,12 @@ function newSession() {
 }
 
 const PEEK = 0.34;
+const PROMO_PEEK = 0.5;
 const MID = 0.62;
 const TALL = 0.9;
 
-type Step = "peek" | "locations" | "search" | "details" | "fare";
+type Step = "peek" | "locations" | "search" | "who" | "fare";
+const BOOKING_STEPS: Step[] = ["locations", "who", "fare"];
 type SearchTarget = "pickup" | "dropoff";
 
 const PACKAGE_PRESETS = [
@@ -63,18 +66,25 @@ export function BookingSheet({
   activeTrip,
   activeCount = 0,
   maxActiveOrders = 3,
+  cancelLimited = false,
+  orderHoldReason,
   onRouteChange,
 }: {
   activeTrip: Trip | null;
   activeCount?: number;
   maxActiveOrders?: number;
+  cancelLimited?: boolean;
+  orderHoldReason?: string | null;
   onRouteChange: (pickup: string | null, dropoff: string | null) => void;
 }) {
   const router = useRouter();
   const { authenticated, openAuth, user } = useAuth();
   const createTrip = useCreateTripMutation();
   const { data: appStatus } = useClientAppStatus();
+  const { data: tripsPage } = useTrips(authenticated);
   const paystackEnabled = Boolean(appStatus?.paystackEnabled);
+  const zones = appStatus?.zones;
+  const maxDeliveryKm = appStatus?.maxDeliveryDistanceKm ?? DEFAULT_MAX_DELIVERY_KM;
 
   const [snap, setSnap] = useState<number | string | null>(PEEK);
   const [step, setStep] = useState<Step>("peek");
@@ -99,14 +109,43 @@ export function BookingSheet({
   const [quotedListFee, setQuotedListFee] = useState(0);
   const [quotedOnlineFee, setQuotedOnlineFee] = useState(0);
   const [quotedOnlineDiscount, setQuotedOnlineDiscount] = useState(ONLINE_PAYMENT_DISCOUNT_NGN);
-  const [checkingRange, setCheckingRange] = useState(false);
+  const [quotedSecondFree, setQuotedSecondFree] = useState(false);
   const sessionRef = useRef(newSession());
 
-  const payingOnline = paystackEnabled && paymentMethod === "paystack";
+  const secondOrderFree = quotedSecondFree || Boolean(tripsPage?.secondOrderFree);
+  const noCompletedOrder =
+    !authenticated ||
+    (tripsPage != null &&
+      !tripsPage.trips.some((trip) => trip.status === "completed"));
+  const iPay = customerRole === "sender";
+  const payingOnline =
+    !secondOrderFree && paystackEnabled && iPay && paymentMethod === "paystack";
   const pickup = pickupPlace?.name ?? "";
   const dropoff = dropoffPlace?.name ?? "";
   const typed = query.trim();
   const showQuick = typed.length < 2;
+  const recentPlaces = recentDeliveredPlaces(tripsPage?.trips ?? []).filter((place) => {
+    const other = searchTarget === "dropoff" ? pickupPlace : dropoffPlace;
+    if (!other) return true;
+    if (samePlace(place, other)) return false;
+    return (
+      deliveryRangeError(
+        searchTarget === "dropoff" ? other.lat : place.lat,
+        searchTarget === "dropoff" ? other.lng : place.lng,
+        searchTarget === "dropoff" ? place.lat : other.lat,
+        searchTarget === "dropoff" ? place.lng : other.lng,
+        zones,
+        maxDeliveryKm,
+      ) == null
+    );
+  });
+  const inRangeHits =
+    searchTarget === "dropoff" && pickupPlace
+      ? googleHits.filter(
+          (place) =>
+            typeof place.distanceKm !== "number" || place.distanceKm <= maxDeliveryKm,
+        )
+      : googleHits;
 
   useEffect(() => {
     if (step === "peek") {
@@ -116,9 +155,17 @@ export function BookingSheet({
     onRouteChange(pickup || null, dropoff || null);
   }, [step, pickup, dropoff, onRouteChange]);
 
+  useEffect(() => {
+    if (step !== "peek") return;
+    setSnap(noCompletedOrder ? PROMO_PEEK : PEEK);
+  }, [step, noCompletedOrder]);
+
   const listFee = quotedListFee;
-  const fee =
-    payingOnline && quotedOnlineFee > 0 ? quotedOnlineFee : listFee;
+  const fee = secondOrderFree
+    ? 0
+    : payingOnline && quotedOnlineFee > 0
+      ? quotedOnlineFee
+      : listFee;
   const onlineDiscount =
     payingOnline && listFee > fee ? listFee - fee : 0;
 
@@ -128,13 +175,57 @@ export function BookingSheet({
       setQuotedListFee(0);
       setQuotedOnlineFee(0);
       setQuotedOnlineDiscount(ONLINE_PAYMENT_DISCOUNT_NGN);
-      setCheckingRange(false);
+      setQuotedSecondFree(false);
       return;
     }
 
-    let cancelled = false;
-    setCheckingRange(true);
+    if (samePlace(pickupPlace, dropoffPlace)) {
+      setDistanceError(SAME_PLACE_MESSAGE);
+      setQuotedListFee(0);
+      setQuotedOnlineFee(0);
+      setQuotedSecondFree(false);
+      return;
+    }
+
+    const rangeError = deliveryRangeError(
+      pickupPlace.lat,
+      pickupPlace.lng,
+      dropoffPlace.lat,
+      dropoffPlace.lng,
+      zones,
+      maxDeliveryKm,
+    );
+    if (rangeError) {
+      setDistanceError(rangeError);
+      setQuotedListFee(0);
+      setQuotedOnlineFee(0);
+      setQuotedSecondFree(false);
+      return;
+    }
+
     setDistanceError("");
+    setQuotedListFee(
+      quoteFee({
+        pickupLat: pickupPlace.lat,
+        pickupLng: pickupPlace.lng,
+        dropoffLat: dropoffPlace.lat,
+        dropoffLng: dropoffPlace.lng,
+        paymentMethod: "cash",
+        zones,
+      }),
+    );
+    setQuotedOnlineFee(
+      quoteFee({
+        pickupLat: pickupPlace.lat,
+        pickupLng: pickupPlace.lng,
+        dropoffLat: dropoffPlace.lat,
+        dropoffLng: dropoffPlace.lng,
+        paymentMethod: "paystack",
+        zones,
+      }),
+    );
+
+    let cancelled = false;
     void estimateFare({
       pickupLat: pickupPlace.lat,
       pickupLng: pickupPlace.lng,
@@ -143,8 +234,12 @@ export function BookingSheet({
     })
       .then((estimate) => {
         if (cancelled) return;
-        setDistanceError("");
-        setQuotedListFee(estimate.feeNgn);
+        setQuotedSecondFree(Boolean(estimate.secondOrderFree));
+        setQuotedListFee(
+          estimate.secondOrderFree
+            ? (estimate.listFeeNgn ?? estimate.feeNgn)
+            : estimate.feeNgn,
+        );
         setQuotedOnlineFee(estimate.onlineFeeNgn ?? estimate.feeNgn);
         setQuotedOnlineDiscount(
           estimate.onlineDiscountNgn ?? ONLINE_PAYMENT_DISCOUNT_NGN,
@@ -154,41 +249,21 @@ export function BookingSheet({
         if (cancelled) return;
         if (
           err instanceof ApiError &&
-          (err.code === "DISTANCE_EXCEEDS_MAX" || err.code === "OUTSIDE_SERVICE_AREA")
+          (err.code === "DISTANCE_EXCEEDS_MAX" ||
+            err.code === "OUTSIDE_SERVICE_AREA" ||
+            err.code === "CROSS_ZONE" ||
+            err.code === "SAME_LOCATION")
         ) {
           setDistanceError(err.message);
           setQuotedListFee(0);
           setQuotedOnlineFee(0);
-          return;
         }
-        // Fallback preview if estimate fails for other reasons
-        setDistanceError("");
-        const preview = quoteFee({
-          pickupLat: pickupPlace.lat,
-          pickupLng: pickupPlace.lng,
-          dropoffLat: dropoffPlace.lat,
-          dropoffLng: dropoffPlace.lng,
-          paymentMethod: "cash",
-        });
-        setQuotedListFee(preview);
-        setQuotedOnlineFee(
-          quoteFee({
-            pickupLat: pickupPlace.lat,
-            pickupLng: pickupPlace.lng,
-            dropoffLat: dropoffPlace.lat,
-            dropoffLng: dropoffPlace.lng,
-            paymentMethod: "paystack",
-          }),
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setCheckingRange(false);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [pickupPlace, dropoffPlace]);
+  }, [pickupPlace, dropoffPlace, zones, maxDeliveryKm, authenticated]);
 
   useEffect(() => {
     if (step !== "search") return;
@@ -203,7 +278,13 @@ export function BookingSheet({
     setSearching(true);
     setSearchError("");
     const t = window.setTimeout(() => {
-      void autocompletePlaces(typed, sessionRef.current)
+      void autocompletePlaces(
+        typed,
+        sessionRef.current,
+        searchTarget === "dropoff" && pickupPlace
+          ? { lat: pickupPlace.lat, lng: pickupPlace.lng }
+          : undefined,
+      )
         .then((places) => {
           if (!cancelled) setGoogleHits(places);
         })
@@ -222,13 +303,20 @@ export function BookingSheet({
       cancelled = true;
       window.clearTimeout(t);
     };
-  }, [typed, step]);
+  }, [typed, step, searchTarget, pickupPlace]);
 
   const sending = customerRole === "sender";
 
   const atActiveLimit = activeCount >= maxActiveOrders;
 
   function startBooking() {
+    if (cancelLimited) {
+      setError(
+        orderHoldReason ??
+          "You've cancelled too many orders recently. You can book again later.",
+      );
+      return;
+    }
     if (atActiveLimit) {
       setError(
         `You already have ${maxActiveOrders} live orders. Finish or cancel one to book again.`,
@@ -250,8 +338,27 @@ export function BookingSheet({
     setSnap(TALL);
   }
 
-  function pickQuick(place: Place) {
-    if (searchTarget === "pickup") setPickupPlace(place);
+  function applyPickedPlace(target: SearchTarget, place: Place) {
+    const other = target === "pickup" ? dropoffPlace : pickupPlace;
+    if (other && samePlace(place, other)) {
+      setSearchError(SAME_PLACE_MESSAGE);
+      return;
+    }
+    if (other) {
+      const rangeError = deliveryRangeError(
+        target === "dropoff" ? other.lat : place.lat,
+        target === "dropoff" ? other.lng : place.lng,
+        target === "dropoff" ? place.lat : other.lat,
+        target === "dropoff" ? place.lng : other.lng,
+        zones,
+        maxDeliveryKm,
+      );
+      if (rangeError) {
+        setSearchError(rangeError);
+        return;
+      }
+    }
+    if (target === "pickup") setPickupPlace(place);
     else setDropoffPlace(place);
     setStep("locations");
     setSnap(MID);
@@ -286,8 +393,8 @@ export function BookingSheet({
     setSearchError("");
     try {
       const gps = await readGps();
-      if (!isInActiveServiceArea(gps.lat, gps.lng)) {
-        setSearchError("This location is outside the KoboRide service area.");
+      if (!isInLagos(gps.lat, gps.lng)) {
+        setSearchError("KoboRide only picks up and drops off in Lagos.");
         return;
       }
       const place = await reverseGeocode(gps.lat, gps.lng);
@@ -298,10 +405,7 @@ export function BookingSheet({
         lng: gps.lng,
         current: true,
       };
-      if (searchTarget === "pickup") setPickupPlace(selected);
-      else setDropoffPlace(selected);
-      setStep("locations");
-      setSnap(MID);
+      applyPickedPlace(searchTarget, selected);
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : "Could not use current location");
     } finally {
@@ -310,12 +414,23 @@ export function BookingSheet({
   }
 
   async function pickGoogle(hit: GooglePlaceSuggestion) {
+    if (
+      searchTarget === "dropoff" &&
+      pickupPlace &&
+      typeof hit.distanceKm === "number" &&
+      hit.distanceKm > maxDeliveryKm
+    ) {
+      setSearchError(
+        `This delivery is ${formatKm(hit.distanceKm)}, which is beyond KoboRide's current bicycle delivery range (${formatKm(maxDeliveryKm)}).`,
+      );
+      return;
+    }
     setResolvingId(hit.id);
     setSearchError("");
     try {
       const place = await placeDetails(hit.id, sessionRef.current);
-      if (!isInActiveServiceArea(place.lat, place.lng)) {
-        setSearchError("This location is outside the KoboRide service area.");
+      if (!isInLagos(place.lat, place.lng)) {
+        setSearchError("KoboRide only picks up and drops off in Lagos.");
         return;
       }
       sessionRef.current = newSession();
@@ -325,10 +440,7 @@ export function BookingSheet({
         lat: place.lat,
         lng: place.lng,
       };
-      if (searchTarget === "pickup") setPickupPlace(selected);
-      else setDropoffPlace(selected);
-      setStep("locations");
-      setSnap(MID);
+      applyPickedPlace(searchTarget, selected);
     } catch (err) {
       setSearchError(err instanceof Error ? err.message : "Could not load that place");
     } finally {
@@ -353,7 +465,7 @@ export function BookingSheet({
     setQuotedListFee(0);
     setQuotedOnlineFee(0);
     setQuotedOnlineDiscount(ONLINE_PAYMENT_DISCOUNT_NGN);
-    setCheckingRange(false);
+    setQuotedSecondFree(false);
   }
 
   async function findRider() {
@@ -370,15 +482,15 @@ export function BookingSheet({
     const otherPhone = normalizeNgPhone(contactPhone);
     if (!otherPhone) {
       setError(NG_PHONE_ERROR);
-      setStep("details");
-      setSnap(MID);
+      setStep("who");
+      setSnap(TALL);
       return;
     }
     const notes = packageNotes(packageKind, customNotes);
     if (!notes) {
       setError("Tell us what we’re moving");
-      setStep("details");
-      setSnap(MID);
+      setStep("who");
+      setSnap(TALL);
       return;
     }
     const payload = {
@@ -386,6 +498,7 @@ export function BookingSheet({
       dropoff: dropoffPlace.name,
       notes,
       customerRole,
+      farePayer: "sender" as const,
       senderName: sending ? meName : contactName.trim(),
       senderPhone: sending ? mePhone : otherPhone,
       receiverName: sending ? contactName.trim() : meName,
@@ -396,7 +509,7 @@ export function BookingSheet({
       dropoffLng: dropoffPlace.lng,
     };
     try {
-      if (payingOnline) {
+      if (payingOnline && !secondOrderFree) {
         setPaying(true);
         const checkout = await initializeOrderPayment(payload);
         const reference = await openPaystack(checkout);
@@ -418,6 +531,12 @@ export function BookingSheet({
         setDistanceError(err.message);
         setStep("locations");
         setSnap(MID);
+        return;
+      }
+      if (err instanceof ApiError && err.code === "CANCEL_LIMIT_REACHED") {
+        setError(err.message);
+        setStep("peek");
+        setSnap(PEEK);
         return;
       }
       setError(err instanceof Error ? err.message : "Could not create request");
@@ -462,6 +581,28 @@ export function BookingSheet({
             <h1 className="font-display text-[22px] leading-tight font-semibold tracking-[-0.03em] text-[#1A1A16]">
               Send a package
             </h1>
+            {noCompletedOrder ? (
+              <button
+                type="button"
+                onClick={startBooking}
+                onTouchEnd={(event) => {
+                  event.preventDefault();
+                  startBooking();
+                }}
+                className="relative z-50 mt-3 w-full rounded-[22px] bg-accent px-4 py-3.5 text-left text-[#1A1A16] shadow-[0_8px_20px_rgba(245,166,35,0.28)] active:brightness-95"
+              >
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#1A1A16] px-2 py-0.5 text-[10px] font-bold tracking-[0.07em] text-accent uppercase">
+                  <Star className="h-3 w-3" strokeWidth={2.6} fill="currentColor" />
+                  Offer
+                </span>
+                <p className="mt-1.5 font-display text-[18px] leading-tight font-semibold tracking-[-0.03em]">
+                  2nd order free
+                </p>
+                <p className="mt-0.5 text-[13px] leading-snug text-[#1A1A16]/70">
+                  Send one package. The next delivery is on us.
+                </p>
+              </button>
+            ) : null}
             <div className="mt-4 grid grid-cols-2 gap-2.5">
               <button
                 type="button"
@@ -473,7 +614,7 @@ export function BookingSheet({
                 className={cn(
                   "relative z-50 flex min-h-[7.5rem] w-full flex-col items-start rounded-[22px] bg-[#EEEDE8] px-3.5 py-4 text-left",
                   "pointer-events-auto touch-manipulation select-none active:bg-[#E4E2DB]",
-                  atActiveLimit && "opacity-60",
+                  (atActiveLimit || cancelLimited) && "opacity-60",
                 )}
               >
                 <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#FAFAF7] text-brand">
@@ -504,31 +645,36 @@ export function BookingSheet({
                 </span>
               </div>
             </div>
-            {atActiveLimit ? (
+            {cancelLimited ? (
+              <p className="mt-3 text-[13px] font-medium text-[#8A8780]">
+                {orderHoldReason ??
+                  "You've cancelled too many orders recently. You can book again later."}
+              </p>
+            ) : atActiveLimit ? (
               <p className="mt-3 text-[13px] font-medium text-[#8A8780]">
                 You already have {maxActiveOrders} live orders. Finish or cancel
                 one to book again.
               </p>
             ) : error ? (
               <p className="mt-3 text-[13px] font-medium text-danger">{error}</p>
+            ) : secondOrderFree ? (
+              <p className="mt-3 text-[13px] text-[#8A8780]">
+                Your next order is free after that first delivery.
+              </p>
             ) : null}
           </div>
         ) : null}
 
-        {step === "locations" || step === "details" || step === "fare" ? (
+        {BOOKING_STEPS.includes(step) ? (
           <button
             type="button"
             className="mb-3 inline-flex items-center gap-1 text-[13px] font-medium text-[#8A8780]"
             onClick={() => {
               if (step === "fare") {
-                setStep("details");
-                return;
-              }
-              if (step === "details") {
-                setStep("locations");
-                return;
-              }
-              reset();
+                setStep("who");
+                setSnap(TALL);
+              } else if (step === "who") setStep("locations");
+              else reset();
             }}
           >
             <ChevronLeft className="h-4 w-4" />
@@ -579,9 +725,6 @@ export function BookingSheet({
                 </span>
               </button>
             </div>
-            {checkingRange && pickup && dropoff ? (
-              <p className="mt-3 text-[13px] text-[#8A8780]">Checking delivery range…</p>
-            ) : null}
             {distanceError ? (
               <p className="mt-3 text-[13px] font-medium text-danger">{distanceError}</p>
             ) : null}
@@ -590,12 +733,11 @@ export function BookingSheet({
               disabled={
                 !pickup.trim() ||
                 !dropoff.trim() ||
-                checkingRange ||
                 Boolean(distanceError)
               }
               onClick={() => {
-                if (checkingRange || distanceError) return;
-                setStep("details");
+                if (distanceError) return;
+                setStep("who");
                 setSnap(TALL);
               }}
             >
@@ -605,7 +747,7 @@ export function BookingSheet({
         ) : null}
 
         {step === "search" ? (
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div key={searchTarget} className="flex min-h-0 flex-1 flex-col">
             <h2 className="shrink-0 font-display text-[20px] font-semibold tracking-[-0.03em]">
               {searchTarget === "pickup" ? "Pickup" : "Drop-off"}
             </h2>
@@ -643,34 +785,52 @@ export function BookingSheet({
                 </li>
               ) : null}
               {showQuick
-                ? SEARCH_PLACES.map((place) => (
-                  <li key={place.name}>
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-3 py-3 text-left"
-                      onClick={() => pickQuick(place)}
-                    >
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#EEEDE8] text-brand">
-                        <Star className="h-4 w-4" />
-                      </span>
-                      <span>
-                        <span className="block text-[15px] font-semibold">{place.name}</span>
-                        <span className="block text-[13px] text-[#8A8780]">{place.area}</span>
-                      </span>
-                    </button>
-                  </li>
-                ))
+                ? recentPlaces.map((place) => (
+                    <li key={`${place.lat},${place.lng}`}>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-3 py-3 text-left"
+                        onClick={() => applyPickedPlace(searchTarget, place)}
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EEEDE8] text-brand">
+                          <History className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[15px] font-semibold">
+                            {place.name}
+                          </span>
+                          <span className="block truncate text-[13px] text-[#8A8780]">
+                            {place.area}
+                          </span>
+                        </span>
+                        {searchTarget === "dropoff" && pickupPlace ? (
+                          <span className="num shrink-0 text-[13px] text-[#8A8780]">
+                            {formatKm(
+                              distanceKmBetween(
+                                pickupPlace.lat,
+                                pickupPlace.lng,
+                                place.lat,
+                                place.lng,
+                              ),
+                            )}
+                          </span>
+                        ) : null}
+                      </button>
+                    </li>
+                  ))
                 : null}
               {!showQuick && searching ? (
                 <li className="py-3 text-[13px] text-[#8A8780]">Searching…</li>
               ) : null}
-              {!showQuick && !searching && googleHits.length === 0 && !searchError ? (
+              {!showQuick && !searching && inRangeHits.length === 0 && !searchError ? (
                 <li className="py-3 text-[13px] text-[#8A8780]">
-                  No places found. Try a nearby street or landmark.
+                  {googleHits.length > 0
+                    ? "Those places are outside delivery range."
+                    : "No places found. Try a nearby street or landmark."}
                 </li>
               ) : null}
               {!showQuick
-                ? googleHits.map((place) => (
+                ? inRangeHits.map((place) => (
                   <li key={place.id}>
                     <button
                       type="button"
@@ -678,19 +838,27 @@ export function BookingSheet({
                       className="flex w-full items-center gap-3 py-3 text-left disabled:opacity-50"
                       onClick={() => void pickGoogle(place)}
                     >
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#EEEDE8] text-brand">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EEEDE8] text-brand">
                         <MapPin className="h-4 w-4" />
                       </span>
-                      <span>
-                        <span className="block text-[15px] leading-snug font-semibold">
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[15px] font-semibold">
                           {place.name}
                         </span>
                         {resolvingId === place.id ? (
                           <span className="block text-[13px] text-[#8A8780]">Loading…</span>
                         ) : place.area ? (
-                          <span className="block text-[13px] text-[#8A8780]">{place.area}</span>
+                          <span className="block truncate text-[13px] text-[#8A8780]">
+                            {place.area}
+                          </span>
                         ) : null}
                       </span>
+                      {searchTarget === "dropoff" &&
+                      typeof place.distanceKm === "number" ? (
+                        <span className="num shrink-0 text-[13px] text-[#8A8780]">
+                          {formatKm(place.distanceKm)}
+                        </span>
+                      ) : null}
                     </button>
                   </li>
                 ))
@@ -699,17 +867,11 @@ export function BookingSheet({
           </div>
         ) : null}
 
-        {step === "details" ? (
+        {step === "who" ? (
           <div>
-            <h2 className="font-display text-[22px] font-semibold tracking-[-0.03em]">
-              Package details
+            <h2 className="font-display text-[20px] font-semibold tracking-[-0.03em]">
+              Sending or receiving?
             </h2>
-            <p className="mt-1 text-[13px] text-[#8A8780]">
-              {sending
-                ? "What’s going, and who the rider should call at drop-off."
-                : "What’s going, and who the rider should collect from."}
-            </p>
-
             <div className="mt-4 grid grid-cols-2 gap-1.5 rounded-2xl bg-[#EEEDE8] p-1">
               <button
                 type="button"
@@ -733,86 +895,71 @@ export function BookingSheet({
               </button>
             </div>
 
-            <div className="mt-5">
-              <p className="text-[13px] font-medium text-[#8A8780]">What’s moving</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {PACKAGE_PRESETS.map((label) => {
-                  const selected = packageKind === label;
-                  return (
-                    <button
-                      key={label}
-                      type="button"
-                      className={cn(
-                        "rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors",
-                        selected
-                          ? "bg-brand text-[#FAFAF7]"
-                          : "bg-[#EEEDE8] text-[#1A1A16]",
-                      )}
-                      onClick={() => {
-                        setPackageKind(label);
-                        setError("");
-                      }}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-                <button
-                  type="button"
-                  className={cn(
-                    "rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors",
-                    packageKind === PACKAGE_OTHER
-                      ? "bg-brand text-[#FAFAF7]"
-                      : "bg-[#EEEDE8] text-[#1A1A16]",
-                  )}
-                  onClick={() => {
-                    setPackageKind(PACKAGE_OTHER);
-                    setError("");
-                  }}
-                >
-                  Something else
-                </button>
-              </div>
-              {packageKind === PACKAGE_OTHER ? (
-                <textarea
-                  className="mt-3 min-h-22 w-full resize-none rounded-2xl bg-[#EEEDE8] px-4 py-3 text-[15px] outline-none placeholder:text-[#8A8780]"
-                  placeholder="Describe what we’re moving…"
-                  value={customNotes}
-                  onChange={(e) => setCustomNotes(e.target.value)}
-                  autoFocus
-                />
-              ) : null}
+            <p className="mt-4 text-[13px] font-medium text-[#8A8780]">
+              {sending ? "Receiver at drop-off" : "Sender at pickup"}
+            </p>
+            <input
+              className="mt-2 h-12 w-full rounded-2xl bg-[#EEEDE8] px-4 text-[15px] outline-none placeholder:text-[#8A8780]"
+              placeholder="Name"
+              value={contactName}
+              onChange={(e) => setContactName(e.target.value)}
+              autoComplete="name"
+            />
+            <div className="mt-2">
+              <NigeriaPhoneField
+                tone="muted"
+                value={contactPhone}
+                onChange={setContactPhone}
+              />
             </div>
 
-            <div className="mt-4 rounded-[22px] bg-[#EEEDE8] p-4">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#FAFAF7] text-brand">
-                  <User className="h-4 w-4" />
-                </span>
-                <div>
-                  <p className="font-display text-[15px] font-semibold tracking-[-0.02em]">
-                    {sending ? "Receiver" : "Sender"}
-                  </p>
-                  <p className="text-[12px] text-[#8A8780]">
-                    {sending ? "Name and phone at drop-off" : "Name and phone at pickup"}
-                  </p>
-                </div>
-              </div>
-              <input
-                className="mt-3.5 h-12 w-full rounded-2xl bg-[#FAFAF7] px-4 text-[15px] outline-none placeholder:text-[#8A8780]"
-                placeholder="Name"
-                value={contactName}
-                onChange={(e) => setContactName(e.target.value)}
-                autoComplete="name"
-              />
-              <div className="mt-2">
-                <NigeriaPhoneField
-                  tone="canvas"
-                  value={contactPhone}
-                  onChange={setContactPhone}
-                />
-              </div>
+            <p className="mt-4 text-[13px] font-medium text-[#8A8780]">What’s moving</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {PACKAGE_PRESETS.map((label) => {
+                const selected = packageKind === label;
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    className={cn(
+                      "rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors",
+                      selected
+                        ? "bg-brand text-[#FAFAF7]"
+                        : "bg-[#EEEDE8] text-[#1A1A16]",
+                    )}
+                    onClick={() => {
+                      setPackageKind(label);
+                      setError("");
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                className={cn(
+                  "rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors",
+                  packageKind === PACKAGE_OTHER
+                    ? "bg-brand text-[#FAFAF7]"
+                    : "bg-[#EEEDE8] text-[#1A1A16]",
+                )}
+                onClick={() => {
+                  setPackageKind(PACKAGE_OTHER);
+                  setError("");
+                }}
+              >
+                Something else
+              </button>
             </div>
+            {packageKind === PACKAGE_OTHER ? (
+              <textarea
+                className="mt-3 min-h-22 w-full resize-none rounded-2xl bg-[#EEEDE8] px-4 py-3 text-[15px] outline-none placeholder:text-[#8A8780]"
+                placeholder="Describe what we’re moving…"
+                value={customNotes}
+                onChange={(e) => setCustomNotes(e.target.value)}
+              />
+            ) : null}
 
             {error ? (
               <p className="mt-3 text-[13px] font-medium text-danger">{error}</p>
@@ -820,14 +967,6 @@ export function BookingSheet({
             <Button
               className="mt-5 w-full"
               onClick={() => {
-                if (!packageNotes(packageKind, customNotes)) {
-                  setError(
-                    packageKind === PACKAGE_OTHER
-                      ? "Describe what we’re moving"
-                      : "Pick what we’re moving",
-                  );
-                  return;
-                }
                 if (contactName.trim().length < 2) {
                   setError(
                     sending ? "Add the receiver’s name" : "Add the sender’s name",
@@ -836,6 +975,14 @@ export function BookingSheet({
                 }
                 if (!normalizeNgPhone(contactPhone)) {
                   setError(NG_PHONE_ERROR);
+                  return;
+                }
+                if (!packageNotes(packageKind, customNotes)) {
+                  setError(
+                    packageKind === PACKAGE_OTHER
+                      ? "Describe what we’re moving"
+                      : "Pick what we’re moving",
+                  );
                   return;
                 }
                 setError("");
@@ -851,13 +998,23 @@ export function BookingSheet({
         {step === "fare" ? (
           <div>
             <FareNumber amount={fee} />
-            {onlineDiscount > 0 ? (
+            {secondOrderFree ? (
+              <p className="mt-2 text-[13px]">
+                <span className="font-semibold text-brand">2nd order free</span>
+                {listFee > 0 ? (
+                  <span className="text-[#8A8780]">
+                    {" · usual "}
+                    <span className="num line-through">{formatNaira(listFee)}</span>
+                  </span>
+                ) : null}
+              </p>
+            ) : onlineDiscount > 0 ? (
               <p className="mt-2 text-[13px] text-[#8A8780]">
                 Save {formatNaira(onlineDiscount)} online · cash{" "}
                 <span className="num line-through">{formatNaira(listFee)}</span>
               </p>
             ) : null}
-            {paystackEnabled ? (
+            {secondOrderFree ? null : paystackEnabled && iPay ? (
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -885,7 +1042,7 @@ export function BookingSheet({
                   )}
                   onClick={() => setPaymentMethod("cash")}
                 >
-                  <p className="font-display text-[15px] font-semibold">I'll pay cash</p>
+                  <p className="font-display text-[15px] font-semibold">I&apos;ll pay cash</p>
                   <p
                     className={cn(
                       "mt-0.5 text-[12px]",
@@ -897,7 +1054,9 @@ export function BookingSheet({
                 </button>
               </div>
             ) : (
-              <p className="mt-2 text-[13px] text-[#8A8780]">Pay cash to the rider</p>
+              <p className="mt-2 text-[13px] text-[#8A8780]">
+                {iPay ? "Pay cash to the rider" : "Sender pays cash at pickup"}
+              </p>
             )}
             {paystackEnabled && payingOnline ? (
               <p className="mt-3 text-[13px] text-[#8A8780]">

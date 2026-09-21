@@ -24,5 +24,6 @@ export const queryKeys = {
     customers: () => [...queryKeys.admin.all, "customers"] as const,
     customer: (id: string) => [...queryKeys.admin.all, "customer", id] as const,
     settings: () => [...queryKeys.admin.all, "settings"] as const,
+    zones: () => [...queryKeys.admin.all, "zones"] as const,
   },
 };

@@ -1,5 +1,5 @@
 import { cn } from "@/lib/cn";
-import { formatDateTime, formatDuration, formatNaira, tripDurationSeconds } from "@/lib/format";
+import { formatDateTime, formatDuration, formatFare, tripDurationSeconds } from "@/lib/format";
 import { tripHeadline, type Trip } from "@/types/request";
 
 function statusTone(trip: Trip) {
@@ -40,7 +40,7 @@ export function TripStatusCard({
             {trip.dropoff}
           </p>
           <p className="num shrink-0 text-[15px] font-bold text-accent">
-            {formatNaira(trip.feeNgn)}
+            {formatFare(trip.feeNgn)}
           </p>
         </div>
         <p className="mt-0.5 text-[13px] text-[#8A8780]">

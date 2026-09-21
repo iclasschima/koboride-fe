@@ -17,7 +17,7 @@ import {
   useRequestDeliveryPinMutation,
   useRiderTrip,
 } from "@/lib/query/hooks";
-import { canRiderRelease, RELEASE_REASONS, tripPaidOnline, type RiderPhase } from "@/types/request";
+import { canRiderRelease, RELEASE_REASONS, cashCollectLabel, isComplimentary, type RiderPhase } from "@/types/request";
 import { formatNaira } from "@/lib/format";
 
 const SKIP_REASONS = [
@@ -31,7 +31,11 @@ const ACTION: Record<
   { label: string; pidgin: string; icon: typeof Bike }
 > = {
   accepted: { label: "I'm heading there", pidgin: "I don enter road", icon: Bike },
-  en_route_pickup: { label: "Mark as collected", pidgin: "I don collect am", icon: Package },
+  en_route_pickup: {
+    label: "Collected, heading to drop-off",
+    pidgin: "I don collect, I dey go drop",
+    icon: Package,
+  },
   collected: { label: "Mark as delivered", pidgin: "I don deliver", icon: Check },
   en_route_dropoff: { label: "Mark as delivered", pidgin: "I don deliver", icon: Check },
   delivered: { label: "Done", pidgin: "E don finish", icon: Check },
@@ -136,6 +140,15 @@ export default function RiderJobPage() {
     tapFeedback();
     if (dropoff && needsPin) {
       setAskPin(true);
+      setProofError("");
+      // Ask the customer for the PIN as soon as the rider starts delivery completion.
+      if (!trip?.deliveryPinRevealed) {
+        void requestPin.mutateAsync(params.id).catch((err) => {
+          setProofError(
+            err instanceof Error ? err.message : "Could not ask for the PIN",
+          );
+        });
+      }
       return;
     }
     void next();
@@ -270,10 +283,14 @@ export default function RiderJobPage() {
                 notes={trip.notes}
                 pickupFallbackPhone={dropoff ? trip.senderPhone : ""}
               />
-              <p className="mt-3 text-[13px] text-[#8A8780]">
-                {tripPaidOnline(trip)
-                  ? `Customer paid ${formatNaira(trip.feeNgn)} online`
-                  : `Collect ${formatNaira(trip.feeNgn)} cash`}
+              <p
+                className={
+                  isComplimentary(trip)
+                    ? "mt-3 text-[13px] font-medium text-success"
+                    : "mt-3 text-[13px] text-[#8A8780]"
+                }
+              >
+                {cashCollectLabel(trip, formatNaira)}
               </p>
             </>
           )}

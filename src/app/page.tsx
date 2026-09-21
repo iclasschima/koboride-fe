@@ -69,6 +69,8 @@ export default function HomePage() {
         activeTrip={active ?? null}
         activeCount={live.length}
         maxActiveOrders={maxActiveOrders}
+        cancelLimited={Boolean(data?.cancelLimited)}
+        orderHoldReason={data?.orderHoldReason}
         onRouteChange={onRouteChange}
       />
     </div>

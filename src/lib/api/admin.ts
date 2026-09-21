@@ -5,7 +5,9 @@ import type {
   AdminRiderDetail,
   OpsUser,
   PlatformSettings,
+  PricingZone,
   RiderIdType,
+  ZoneWriteInput,
 } from "@/types/user";
 
 export type RiderWriteInput = {
@@ -18,6 +20,7 @@ export type RiderWriteInput = {
   nextOfKinName?: string;
   nextOfKinPhone?: string;
   nextOfKinRelationship?: string;
+  zoneSlug?: string;
 };
 
 const admin = { admin: true as const };
@@ -87,6 +90,7 @@ export async function createAdminOrder(input: {
   dropoffLat: number;
   dropoffLng: number;
   customerRole?: "sender" | "receiver";
+  farePayer?: "sender" | "receiver";
   senderName?: string;
   senderPhone?: string;
   receiverName?: string;
@@ -138,6 +142,7 @@ function appendRiderFields(body: FormData, input: RiderWriteInput) {
   if (input.nextOfKinRelationship) {
     body.append("nextOfKinRelationship", input.nextOfKinRelationship);
   }
+  if (input.zoneSlug) body.append("zoneSlug", input.zoneSlug);
   if (input.photo) body.append("photo", input.photo);
   if (input.idDocument) body.append("idDocument", input.idDocument);
 }
@@ -198,4 +203,30 @@ export async function updateAdminSettings(
   input: Partial<PlatformSettings> & { bumpClientRefresh?: true },
 ): Promise<PlatformSettings> {
   return api.patch<PlatformSettings>("/api/admin/settings", input, admin);
+}
+
+export async function listAdminZones(): Promise<PricingZone[]> {
+  const data = await api.get<{ zones: PricingZone[] }>("/api/admin/zones", admin);
+  return data.zones;
+}
+
+export async function createAdminZone(input: ZoneWriteInput): Promise<PricingZone> {
+  const data = await api.post<{ zone: PricingZone }>("/api/admin/zones", input, admin);
+  return data.zone;
+}
+
+export async function updateAdminZone(
+  slug: string,
+  input: Partial<ZoneWriteInput>,
+): Promise<PricingZone> {
+  const data = await api.patch<{ zone: PricingZone }>(
+    `/api/admin/zones/${encodeURIComponent(slug)}`,
+    input,
+    admin,
+  );
+  return data.zone;
+}
+
+export async function deleteAdminZone(slug: string): Promise<void> {
+  await api.delete(`/api/admin/zones/${encodeURIComponent(slug)}`, admin);
 }

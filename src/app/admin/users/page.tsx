@@ -73,7 +73,7 @@ export default function AdminUsersPage() {
                         ) : null}
                         {user.cancelLimited ? (
                           <span className="ml-2 inline-flex rounded-full bg-[#F3E4D8] px-2 py-0.5 align-middle text-[10px] font-semibold text-[#8A4B1F]">
-                            Cancel limit
+                            Booking hold
                           </span>
                         ) : null}
                       </p>
@@ -150,7 +150,7 @@ export default function AdminUsersPage() {
                         ) : null}
                         {user.cancelLimited ? (
                           <span className="ml-2 inline-flex rounded-full bg-[#F3E4D8] px-2 py-0.5 text-[10px] font-semibold text-[#8A4B1F]">
-                            Cancel limit
+                            Booking hold
                           </span>
                         ) : null}
                       </td>

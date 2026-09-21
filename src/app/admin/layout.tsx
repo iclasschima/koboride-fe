@@ -47,7 +47,7 @@ export default function AdminLayout({
       <div className="flex min-h-0 min-w-0 flex-1 flex-col pb-[calc(3.75rem+env(safe-area-inset-bottom))] md:pb-0">
         <header className="hidden h-14 shrink-0 items-center justify-between border-b border-black/6 bg-white px-6 md:flex">
           <p className="text-[13px] font-medium text-[#8A8780]">
-            Yaba · live operations
+            Live operations
           </p>
           <p className="text-[12px] text-[#8A8780]">Ops console</p>
         </header>

@@ -5,6 +5,7 @@ export type GooglePlaceSuggestion = {
   name: string;
   area: string;
   source: "google";
+  distanceKm?: number;
 };
 
 export type GooglePlaceDetails = {
@@ -18,8 +19,13 @@ export type GooglePlaceDetails = {
 export async function autocompletePlaces(
   q: string,
   session: string,
+  origin?: { lat: number; lng: number },
 ): Promise<GooglePlaceSuggestion[]> {
   const params = new URLSearchParams({ q, session });
+  if (origin && Number.isFinite(origin.lat) && Number.isFinite(origin.lng)) {
+    params.set("fromLat", String(origin.lat));
+    params.set("fromLng", String(origin.lng));
+  }
   const data = await api.get<{ places: GooglePlaceSuggestion[] }>(
     `/api/places/autocomplete?${params}`,
     { token: null },

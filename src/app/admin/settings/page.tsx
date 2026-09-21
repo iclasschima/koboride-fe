@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { DeliveryZonesCard } from "@/components/admin/DeliveryZonesCard";
 import { useAdminSettings, useUpdateAdminSettingsMutation } from "@/lib/query/hooks";
 
 export default function AdminSettingsPage() {
@@ -13,6 +14,7 @@ export default function AdminSettingsPage() {
   const [perKmFeeNgn, setPerKmFeeNgn] = useState("250");
   const [minFareNgn, setMinFareNgn] = useState("650");
   const [onlinePaymentDiscountNgn, setOnlinePaymentDiscountNgn] = useState("50");
+  const [stillLookingAfterMinutes, setStillLookingAfterMinutes] = useState("8");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
 
@@ -24,6 +26,7 @@ export default function AdminSettingsPage() {
     setPerKmFeeNgn(String(data.perKmFeeNgn ?? 250));
     setMinFareNgn(String(data.minFareNgn ?? 650));
     setOnlinePaymentDiscountNgn(String(data.onlinePaymentDiscountNgn ?? 50));
+    setStillLookingAfterMinutes(String(data.stillLookingAfterMinutes ?? 8));
   }, [data]);
 
   async function onSubmit(event: React.FormEvent) {
@@ -36,6 +39,7 @@ export default function AdminSettingsPage() {
     const perKm = Number.parseInt(perKmFeeNgn, 10);
     const minFare = Number.parseInt(minFareNgn, 10);
     const onlineDiscount = Number.parseInt(onlinePaymentDiscountNgn, 10);
+    const proposeAfter = Number.parseInt(stillLookingAfterMinutes, 10);
     if (!Number.isInteger(cap) || cap < 1 || cap > 50) {
       setError("Live order cap must be a whole number from 1 to 50.");
       return;
@@ -60,6 +64,10 @@ export default function AdminSettingsPage() {
       setError("Online discount must be 0–5,000.");
       return;
     }
+    if (!Number.isInteger(proposeAfter) || proposeAfter < 1 || proposeAfter > 120) {
+      setError("Offer-after wait must be 1–120 minutes.");
+      return;
+    }
     try {
       await save.mutateAsync({
         maxActiveOrders: cap,
@@ -68,6 +76,7 @@ export default function AdminSettingsPage() {
         perKmFeeNgn: perKm,
         minFareNgn: minFare,
         onlinePaymentDiscountNgn: onlineDiscount,
+        stillLookingAfterMinutes: proposeAfter,
       });
       setSaved(true);
     } catch (err) {
@@ -86,6 +95,8 @@ export default function AdminSettingsPage() {
       <p className="mt-1 text-[14px] text-[#8A8780]">
         Limits you can change without a deploy.
       </p>
+
+      <DeliveryZonesCard />
 
       {isPending ? (
         <div className="mt-6 h-40 animate-pulse rounded-xl bg-[#EFEBE6]" />
@@ -246,6 +257,38 @@ export default function AdminSettingsPage() {
                   onChange={(e) => {
                     setSaved(false);
                     setOnlinePaymentDiscountNgn(e.target.value);
+                  }}
+                  className={`mt-1.5 ${inputClass}`}
+                />
+              </div>
+            </fieldset>
+
+            <fieldset className="space-y-4 border-t border-black/6 pt-6">
+              <legend className="text-[12px] font-semibold tracking-[0.06em] text-[#8A8780] uppercase">
+                Cancel discount
+              </legend>
+              <p className="text-[13px] text-[#8A8780]">
+                After this many minutes searching, Cancel may offer ₦100 off if
+                they stay. Keep it below 15 minutes or the order may auto-cancel
+                first.
+              </p>
+              <div>
+                <label
+                  htmlFor="stillLookingAfterMinutes"
+                  className="text-[12px] font-medium text-[#8A8780]"
+                >
+                  Offer after (min)
+                </label>
+                <input
+                  id="stillLookingAfterMinutes"
+                  type="number"
+                  min={1}
+                  max={120}
+                  step={1}
+                  value={stillLookingAfterMinutes}
+                  onChange={(e) => {
+                    setSaved(false);
+                    setStillLookingAfterMinutes(e.target.value);
                   }}
                   className={`mt-1.5 ${inputClass}`}
                 />

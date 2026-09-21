@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Clock3, Motorbike, UserRound } from "lucide-react";
+import { Bike, Clock3, UserRound } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const TABS = [
-  { href: "/", label: "Home", icon: Motorbike },
+  { href: "/", label: "Home", icon: Bike },
   { href: "/trips", label: "Orders", icon: Clock3 },
   { href: "/profile", label: "Account", icon: UserRound },
 ] as const;

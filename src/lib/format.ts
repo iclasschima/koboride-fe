@@ -16,6 +16,10 @@ export function formatNaira(amount: number): string {
   }).format(amount);
 }
 
+export function formatFare(amount: number): string {
+  return amount <= 0 ? "Free" : formatNaira(amount);
+}
+
 /** Relative time for job cards, e.g. "just now", "10 minutes ago". */
 export function formatTimeAgo(iso: string, nowMs = Date.now()): string {
   const then = new Date(iso).getTime();

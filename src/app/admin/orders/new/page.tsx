@@ -12,10 +12,11 @@ import {
   type GooglePlaceSuggestion,
 } from "@/lib/api/places";
 import { estimateFare } from "@/lib/api/requests";
-import { quoteFee } from "@/lib/fare";
+import { deliveryRangeError, DEFAULT_MAX_DELIVERY_KM, quoteFee } from "@/lib/fare";
 import { formatNaira } from "@/lib/format";
-import { type Place } from "@/lib/places";
-import { useAdminRiders, useCreateAdminOrderMutation } from "@/lib/query/hooks";
+import { type Place, samePlace, SAME_PLACE_MESSAGE } from "@/lib/places";
+import { resolveDispatchZone } from "@/lib/zones";
+import { useAdminRiders, useAdminZones, useCreateAdminOrderMutation } from "@/lib/query/hooks";
 import { type CustomerRole } from "@/types/request";
 
 const inputClass =
@@ -25,6 +26,7 @@ export default function AdminCreateOrderPage() {
   const router = useRouter();
   const createOrder = useCreateAdminOrderMutation();
   const { data: riders = [] } = useAdminRiders();
+  const { data: zones } = useAdminZones();
   const approved = riders.filter((r) => r.approved);
 
   const [customerName, setCustomerName] = useState("");
@@ -38,62 +40,97 @@ export default function AdminCreateOrderPage() {
   const [riderId, setRiderId] = useState("");
   const [error, setError] = useState("");
   const [distanceError, setDistanceError] = useState("");
-  const [checkingRange, setCheckingRange] = useState(false);
   const [fee, setFee] = useState(0);
+
+  const maxDeliveryKm = DEFAULT_MAX_DELIVERY_KM;
+
+  const dispatchZone =
+    pickup && dropoff
+      ? resolveDispatchZone(pickup.lat, pickup.lng, dropoff.lat, dropoff.lng, zones)
+      : null;
+  const zoneRiders = dispatchZone
+    ? approved.filter((rider) => !rider.zoneSlug || rider.zoneSlug === dispatchZone.slug)
+    : approved;
+
+  useEffect(() => {
+    if (!riderId) return;
+    if (!zoneRiders.some((rider) => rider.id === riderId)) setRiderId("");
+  }, [riderId, zoneRiders]);
 
   useEffect(() => {
     if (!pickup || !dropoff) {
       setDistanceError("");
       setFee(0);
-      setCheckingRange(false);
       return;
     }
-    let cancelled = false;
-    setCheckingRange(true);
+    if (samePlace(pickup, dropoff)) {
+      setDistanceError(SAME_PLACE_MESSAGE);
+      setFee(0);
+      return;
+    }
+    const rangeError = deliveryRangeError(
+      pickup.lat,
+      pickup.lng,
+      dropoff.lat,
+      dropoff.lng,
+      zones,
+      maxDeliveryKm,
+    );
+    if (rangeError) {
+      setDistanceError(rangeError);
+      setFee(0);
+      return;
+    }
     setDistanceError("");
-    void estimateFare({
-      pickupLat: pickup.lat,
-      pickupLng: pickup.lng,
-      dropoffLat: dropoff.lat,
-      dropoffLng: dropoff.lng,
-    })
+    setFee(
+      quoteFee({
+        pickupLat: pickup.lat,
+        pickupLng: pickup.lng,
+        dropoffLat: dropoff.lat,
+        dropoffLng: dropoff.lng,
+        zones,
+      }),
+    );
+    let cancelled = false;
+    void estimateFare(
+      {
+        pickupLat: pickup.lat,
+        pickupLng: pickup.lng,
+        dropoffLat: dropoff.lat,
+        dropoffLng: dropoff.lng,
+      },
+      { token: null },
+    )
       .then((estimate) => {
         if (cancelled) return;
-        setDistanceError("");
         setFee(estimate.feeNgn);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
         if (
           err instanceof ApiError &&
-          (err.code === "DISTANCE_EXCEEDS_MAX" || err.code === "OUTSIDE_SERVICE_AREA")
+          (err.code === "DISTANCE_EXCEEDS_MAX" ||
+            err.code === "OUTSIDE_SERVICE_AREA" ||
+            err.code === "CROSS_ZONE" ||
+            err.code === "SAME_LOCATION")
         ) {
           setDistanceError(err.message);
           setFee(0);
-          return;
         }
-        setDistanceError("");
-        setFee(
-          quoteFee({
-            pickupLat: pickup.lat,
-            pickupLng: pickup.lng,
-            dropoffLat: dropoff.lat,
-            dropoffLng: dropoff.lng,
-          }),
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setCheckingRange(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [pickup, dropoff]);
+  }, [pickup, dropoff, zones, maxDeliveryKm]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!pickup || !dropoff) {
       setError("Pick a pickup and drop-off from search.");
+      return;
+    }
+    if (samePlace(pickup, dropoff)) {
+      setError(SAME_PLACE_MESSAGE);
       return;
     }
     if (distanceError) {
@@ -117,6 +154,7 @@ export default function AdminCreateOrderPage() {
         dropoffLat: dropoff.lat,
         dropoffLng: dropoff.lng,
         customerRole,
+        farePayer: "sender",
         senderName: customerRole === "receiver" ? contactName.trim() : undefined,
         senderPhone: customerRole === "receiver" ? contactPhone.trim() : undefined,
         receiverName: customerRole === "sender" ? contactName.trim() : undefined,
@@ -248,9 +286,10 @@ export default function AdminCreateOrderPage() {
             onChange={(e) => setRiderId(e.target.value)}
           >
             <option value="">Assign after creating</option>
-            {approved.map((rider) => (
+            {zoneRiders.map((rider) => (
               <option key={rider.id} value={rider.id}>
                 {rider.name}
+                {rider.zoneSlug ? ` · ${rider.zoneName ?? rider.zoneSlug}` : ""}
               </option>
             ))}
           </select>
@@ -265,9 +304,6 @@ export default function AdminCreateOrderPage() {
           </p>
         ) : null}
 
-        {checkingRange && pickup && dropoff ? (
-          <p className="text-[13px] text-[#8A8780]">Checking delivery range…</p>
-        ) : null}
         {distanceError ? (
           <p className="text-[13px] font-medium text-danger">{distanceError}</p>
         ) : null}
@@ -280,7 +316,7 @@ export default function AdminCreateOrderPage() {
           type="submit"
           size="md"
           className="w-full"
-          disabled={createOrder.isPending || checkingRange || Boolean(distanceError)}
+          disabled={createOrder.isPending || Boolean(distanceError)}
         >
           {createOrder.isPending ? "Creating…" : "Create order"}
         </Button>

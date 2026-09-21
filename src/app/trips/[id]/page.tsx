@@ -11,12 +11,19 @@ import { Button } from "@/components/ui/Button";
 import { StatusStepper } from "@/components/ui/StatusStepper";
 import { NotifyPrompt } from "@/components/notify/NotifyPrompt";
 import { ReportOrderButton } from "@/components/support/WhatsAppSupport";
-import { formatDateTime, formatNaira, formatDuration, tripDurationSeconds } from "@/lib/format";
-import { useCancelOrderMutation, useRevealDeliveryPinMutation, useTrip } from "@/lib/query/hooks";
+import { formatDateTime, formatDuration, formatFare, formatNaira, tripDurationSeconds } from "@/lib/format";
+import {
+  useAcceptRetentionOfferMutation,
+  useCancelOrderMutation,
+  useRevealDeliveryPinMutation,
+  useTrip,
+} from "@/lib/query/hooks";
 import {
   CANCEL_REASONS,
   canCustomerCancel,
+  canShareDeliveryPin,
   isActiveTrip,
+  isComplimentary,
   tripHeadline,
   tripPaidOnline,
   type Trip,
@@ -33,6 +40,7 @@ export default function TripDetailPage() {
 
   const { data: trip, isPending, isError } = useTrip(tripId);
   const cancelOrder = useCancelOrderMutation();
+  const acceptOffer = useAcceptRetentionOfferMutation();
   const revealPin = useRevealDeliveryPinMutation();
 
   const [snap, setSnap] = useState<number | string | null>(PEEK);
@@ -40,6 +48,9 @@ export default function TripDetailPage() {
   const [cancelReason, setCancelReason] = useState("");
   const [cancelNote, setCancelNote] = useState("");
   const [cancelError, setCancelError] = useState("");
+  const [showRetentionOffer, setShowRetentionOffer] = useState(false);
+  const [retentionDiscount, setRetentionDiscount] = useState(100);
+  const [offerError, setOfferError] = useState("");
 
   useEffect(() => {
     if (trip?.riderPhase === "delivered" || trip?.status === "completed") {
@@ -49,7 +60,17 @@ export default function TripDetailPage() {
     if (trip?.deliveryPinRequested && !trip.deliveryPinRevealed) {
       setSnap(OPEN);
     }
-  }, [trip?.riderPhase, trip?.status, trip?.deliveryPinRequested, trip?.deliveryPinRevealed]);
+  }, [
+    trip?.riderPhase,
+    trip?.status,
+    trip?.deliveryPinRequested,
+    trip?.deliveryPinRevealed,
+  ]);
+
+  useEffect(() => {
+    setShowRetentionOffer(false);
+    setOfferError("");
+  }, [tripId]);
 
   if (isPending) {
     return (
@@ -72,21 +93,48 @@ export default function TripDetailPage() {
 
   const assigned = trip.status === "in_progress";
   const searching = trip.status === "dispatching";
-  const showCancel = canCustomerCancel(trip);
+  const emptyZone = trip.cancelReason === "No riders in this area yet";
+  const scheduledPending = Boolean(
+    searching &&
+      trip.scheduledFor &&
+      new Date(trip.scheduledFor).getTime() > Date.now(),
+  );
+  const showCancel = canCustomerCancel(trip) && !showRetentionOffer;
+  const offerAmount = retentionDiscount || trip.retentionDiscountNgn || 100;
 
   async function handleCancel() {
     setCancelError("");
     try {
-      await cancelOrder.mutateAsync({
+      const result = await cancelOrder.mutateAsync({
         tripId,
         reason: cancelReason,
         note: cancelReason === "Other" ? cancelNote.trim() : undefined,
       });
+      if (result.offerAvailable) {
+        setAskCancel(false);
+        setShowRetentionOffer(true);
+        setRetentionDiscount(result.discountAmount ?? 100);
+        setSnap(OPEN);
+        return;
+      }
       router.push("/");
     } catch (err) {
       setAskCancel(false);
       setCancelError(
         err instanceof ApiError ? err.message : "Could not cancel this order",
+      );
+    }
+  }
+
+  async function handleAcceptOffer() {
+    setOfferError("");
+    try {
+      await acceptOffer.mutateAsync(tripId);
+      setShowRetentionOffer(false);
+      setSnap(PEEK);
+    } catch (err) {
+      setOfferError(
+        err instanceof ApiError ? err.message : "Could not apply that discount",
       );
     }
   }
@@ -165,10 +213,14 @@ export default function TripDetailPage() {
                 />
                 <DetailRow
                   label="Fare"
-                  value={`${formatNaira(trip.feeNgn)}${tripPaidOnline(trip)
-                      ? " · paid online"
-                      : " · paid cash"
-                    }`}
+                  value={
+                    isComplimentary(trip)
+                      ? "Free"
+                      : `${formatNaira(trip.feeNgn)}${tripPaidOnline(trip)
+                          ? " · paid online"
+                          : " · paid cash"
+                        }`
+                  }
                 />
                 {trip.customerRole === "receiver" && trip.senderName ? (
                   <DetailRow label="From" value={trip.senderName} />
@@ -183,13 +235,32 @@ export default function TripDetailPage() {
           {searching ? (
             <>
               <p className="font-display text-[22px] font-semibold tracking-[-0.03em]">
-                Searching for a rider
-                <span className="inline-flex w-[1.1em] animate-pulse">…</span>
+                {scheduledPending ? "Rescheduled" : "Searching for a rider"}
+                {!scheduledPending ? (
+                  <span className="inline-flex w-[1.1em] animate-pulse">…</span>
+                ) : null}
               </p>
-              <p className="mt-2 text-[13px] text-[#8A8780]">
-                <span className="num font-semibold">{formatNaira(trip.feeNgn)}</span>
-                {tripPaidOnline(trip) ? " · paid online" : " · pay cash to the rider"}
-              </p>
+              {scheduledPending && trip.scheduledFor ? (
+                <p className="mt-2 text-[13px] text-[#8A8780]">
+                  We’ll search again around{" "}
+                  <span className="font-medium text-[#1A1A16]">
+                    {formatDateTime(trip.scheduledFor)}
+                  </span>
+                </p>
+              ) : (
+                <p className="mt-2 text-[13px] text-[#8A8780]">
+                  <span className="num font-semibold">{formatFare(trip.feeNgn)}</span>
+                  {isComplimentary(trip)
+                    ? " · no payment this time"
+                    : tripPaidOnline(trip)
+                      ? " · paid online"
+                      : trip.farePayer === "receiver"
+                        ? " · receiver pays cash"
+                        : trip.farePayer === "sender" && trip.customerRole === "receiver"
+                          ? " · sender pays cash"
+                          : " · you pay cash to the rider"}
+                </p>
+              )}
             </>
           ) : null}
 
@@ -218,11 +289,23 @@ export default function TripDetailPage() {
                 ) : null}
               </div>
               <p className="mt-3 text-[13px] text-[#8A8780]">
-                {tripPaidOnline(trip) ? (
+                {isComplimentary(trip) ? (
+                  "This order is free"
+                ) : tripPaidOnline(trip) ? (
                   <>
                     Paid{" "}
                     <span className="num font-semibold">{formatNaira(trip.feeNgn)}</span>{" "}
                     online
+                  </>
+                ) : trip.farePayer === "receiver" ? (
+                  <>
+                    <span className="num font-semibold">{formatNaira(trip.feeNgn)}</span>
+                    {" · receiver pays cash at drop-off"}
+                  </>
+                ) : trip.farePayer === "sender" && trip.customerRole === "receiver" ? (
+                  <>
+                    <span className="num font-semibold">{formatNaira(trip.feeNgn)}</span>
+                    {" · sender pays cash at pickup"}
                   </>
                 ) : (
                   <>
@@ -237,6 +320,7 @@ export default function TripDetailPage() {
                   pin={trip.deliveryPin}
                   revealed={Boolean(trip.deliveryPinRevealed)}
                   requested={Boolean(trip.deliveryPinRequested) && !trip.deliveryPinRevealed}
+                  canReveal={canShareDeliveryPin(trip)}
                   revealing={revealPin.isPending}
                   onReveal={() => revealPin.mutate(tripId)}
                 />
@@ -258,9 +342,14 @@ export default function TripDetailPage() {
           {trip.status === "cancelled" ? (
             <div>
               <p className="font-display text-[22px] font-semibold tracking-[-0.03em]">
-                This request was cancelled
+                {emptyZone ? "No riders here yet" : "This request was cancelled"}
               </p>
-              {trip.cancelReason ? (
+              {emptyZone ? (
+                <p className="mt-2 text-[13px] text-[#8A8780]">
+                  KoboRide doesn't have registered riders here yet. Your request
+                  is saved — we'll use it when we start matching.
+                </p>
+              ) : trip.cancelReason ? (
                 <p className="mt-2 text-[13px] text-[#8A8780]">{trip.cancelReason}</p>
               ) : null}
               {trip.paymentStatus === "refunded" ? (
@@ -274,12 +363,16 @@ export default function TripDetailPage() {
                 <DetailRow label="Cancelled" value={formatDateTime(trip.updatedAt)} />
                 <DetailRow
                   label="Fare"
-                  value={`${formatNaira(trip.feeNgn)}${trip.paymentStatus === "refunded"
-                      ? " · refunded"
-                      : tripPaidOnline(trip)
-                        ? " · paid online"
-                        : " · never charged"
-                    }`}
+                  value={
+                    isComplimentary(trip)
+                      ? "Free"
+                      : `${formatNaira(trip.feeNgn)}${trip.paymentStatus === "refunded"
+                          ? " · refunded"
+                          : tripPaidOnline(trip)
+                            ? " · paid online"
+                            : " · never charged"
+                        }`
+                  }
                 />
                 {trip.customerRole === "receiver" && trip.senderName ? (
                   <DetailRow label="From" value={trip.senderName} />
@@ -293,7 +386,43 @@ export default function TripDetailPage() {
         </div>
 
         <div className="px-5 pt-3">
-          {showCancel ? (
+          {showRetentionOffer ? (
+            <div className="space-y-3">
+              <p className="font-display text-center text-[20px] font-semibold tracking-[-0.03em]">
+                Keep waiting and save {formatNaira(offerAmount)}
+              </p>
+              <p className="text-center text-[13px] text-[#8A8780]">
+                {tripPaidOnline(trip)
+                  ? `We’ll keep looking for a rider and refund ${formatNaira(offerAmount)} to your bank or card.`
+                  : `We’ll keep looking for a rider at ${formatNaira(Math.max(100, trip.feeNgn - offerAmount))}.`}
+              </p>
+              <Button
+                className="w-full"
+                disabled={acceptOffer.isPending || cancelOrder.isPending}
+                onClick={() => void handleAcceptOffer()}
+              >
+                {acceptOffer.isPending
+                  ? "Saving…"
+                  : `Keep waiting · save ${formatNaira(offerAmount)}`}
+              </Button>
+              <button
+                type="button"
+                className="w-full py-2 text-center text-[14px] font-medium text-danger"
+                disabled={acceptOffer.isPending || cancelOrder.isPending}
+                onClick={() => {
+                  setShowRetentionOffer(false);
+                  void handleCancel();
+                }}
+              >
+                Cancel anyway
+              </button>
+              {offerError ? (
+                <p className="text-center text-[13px] text-[#B42318]">{offerError}</p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {showCancel || askCancel ? (
             <div>
               {askCancel ? (
                 <div className="space-y-3">
@@ -359,7 +488,7 @@ export default function TripDetailPage() {
                     {assigned ? "Keep this order" : "Keep waiting"}
                   </button>
                 </div>
-              ) : (
+              ) : showCancel ? (
                 <div>
                   <Button
                     type="button"
@@ -379,15 +508,17 @@ export default function TripDetailPage() {
                   <p className="mt-2 text-center text-[12px] text-[#8A8780]">
                     {assigned
                       ? "You can cancel until the rider picks up the package."
-                      : "Free to cancel while we look for a rider."}
+                      : scheduledPending
+                        ? "You can cancel before we start searching again."
+                        : "Free to cancel while we look for a rider."}
                   </p>
                 </div>
-              )}
+              ) : null}
               {cancelError ? (
                 <p className="mt-3 text-center text-[13px] text-[#B42318]">{cancelError}</p>
               ) : null}
             </div>
-          ) : isActiveTrip(trip) ? (
+          ) : isActiveTrip(trip) && !showRetentionOffer ? (
             <p className="text-center text-[13px] text-[#8A8780]">
               The rider already has this package, so it is too late to cancel. Call the
               rider or tap Report if something is wrong.
@@ -444,20 +575,25 @@ function DeliveryPin({
   pin,
   revealed,
   requested,
+  canReveal,
   revealing,
   onReveal,
 }: {
   pin: string;
   revealed?: boolean;
   requested?: boolean;
+  canReveal?: boolean;
   revealing?: boolean;
   onReveal?: () => void;
 }) {
+  const shareReady = Boolean(canReveal || requested);
   const hint = revealed
     ? "Shared with the rider"
     : requested
       ? "Rider is waiting for this code"
-      : "Give this to the rider at drop-off";
+      : shareReady
+        ? "Give this to the rider at drop-off"
+        : "Share this when the rider is heading to drop-off";
 
   return (
     <div className="mt-4 rounded-2xl bg-[#EEEDE8] px-4 py-3">
@@ -474,7 +610,7 @@ function DeliveryPin({
           variant="secondary"
           size="md"
           className="mt-3 w-full bg-[#FAFAF7]"
-          disabled={revealing}
+          disabled={revealing || !shareReady}
           onClick={onReveal}
         >
           {revealing ? "Sharing…" : "Reveal code"}

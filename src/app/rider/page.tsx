@@ -16,7 +16,7 @@ import {
 } from "@/lib/query/hooks";
 import { formatKm, formatNaira, formatTimeAgo } from "@/lib/format";
 import { cn } from "@/lib/cn";
-import { tripPaidOnline, type Trip } from "@/types/request";
+import { isComplimentary, tripPaidOnline, type Trip } from "@/types/request";
 
 export default function RiderHomePage() {
   const router = useRouter();
@@ -212,6 +212,7 @@ function AwaitingRow({
   onAccept: () => void;
 }) {
   const paidOnline = tripPaidOnline(trip);
+  const complimentary = isComplimentary(trip);
 
   return (
     <li className="overflow-hidden rounded-[22px] bg-white ring-1 ring-black/5">
@@ -228,14 +229,21 @@ function AwaitingRow({
           <p className="mt-2 truncate text-[14px] text-[#5C5A54]">{trip.dropoff}</p>
           <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-[#8A8780]">
             <span className="num font-medium text-[#1A1A16]">
-              {formatNaira(trip.feeNgn)}
+              {formatNaira(complimentary ? trip.payoutNgn : trip.feeNgn)}
             </span>
             <span aria-hidden>·</span>
             <span>{formatKm(trip.distanceKm)}</span>
-            <span aria-hidden>·</span>
-            <span className={paidOnline ? "font-medium text-success" : undefined}>
-              {paidOnline ? "Paid online" : "Cash"}
-            </span>
+            {complimentary ? (
+              <>
+                <span aria-hidden>·</span>
+                <span className="font-medium text-success">Don't collect</span>
+              </>
+            ) : paidOnline ? (
+              <>
+                <span aria-hidden>·</span>
+                <span className="font-medium text-success">Paid online</span>
+              </>
+            ) : null}
             <span aria-hidden>·</span>
             <span>{formatTimeAgo(trip.createdAt)}</span>
           </div>

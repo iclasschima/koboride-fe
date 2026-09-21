@@ -139,6 +139,14 @@ export default function AdminOrderDetailPage() {
           </h2>
           <Row label="Fare" value={formatNaira(trip.feeNgn)} />
           <Row
+            label="Zone"
+            value={
+              trip.zoneName
+                ? `${trip.zoneName}${trip.zoneSlug ? ` (${trip.zoneSlug})` : ""}`
+                : trip.zoneSlug ?? "Yaba"
+            }
+          />
+          <Row
             label="Customer paid"
             value={
               trip.paymentStatus === "refunded"
@@ -146,6 +154,16 @@ export default function AdminOrderDetailPage() {
                 : trip.paymentMethod === "paystack" && trip.paymentStatus === "paid"
                   ? "Online"
                   : "Cash to rider"
+            }
+          />
+          <Row
+            label="Who pays"
+            value={
+              trip.paymentMethod === "paystack" && trip.paymentStatus === "paid"
+                ? "Booker (online)"
+                : trip.farePayer === "receiver"
+                  ? "Receiver (drop-off)"
+                  : "Sender (pickup)"
             }
           />
           <Row label="Rider payout" value={formatNaira(trip.payoutNgn)} />
@@ -355,7 +373,12 @@ function AssignRiderCard({
   onAssign: () => void;
 }) {
   const assigned = Boolean(trip.riderId);
-  const choices = riders.filter((rider) => rider.id !== trip.riderId);
+  const zoneSlug = trip.zoneSlug;
+  const choices = riders.filter((rider) => {
+    if (rider.id === trip.riderId) return false;
+    if (zoneSlug && rider.zoneSlug && rider.zoneSlug !== zoneSlug) return false;
+    return true;
+  });
   const label = assigned ? "Reassign rider" : "Assign rider";
 
   return (
@@ -375,8 +398,10 @@ function AssignRiderCard({
       {choices.length === 0 ? (
         <p className="mt-3 text-[14px] text-[#8A8780]">
           {assigned
-            ? "Add another approved rider to reassign."
-            : "Add an approved rider first."}
+            ? "Add another approved rider in this zone to reassign."
+            : zoneSlug
+              ? `No approved riders in ${trip.zoneName ?? zoneSlug} yet.`
+              : "Add an approved rider first."}
         </p>
       ) : (
         <>
@@ -389,6 +414,7 @@ function AssignRiderCard({
             {choices.map((rider) => (
               <option key={rider.id} value={rider.id}>
                 {rider.name}
+                {rider.zoneSlug ? ` · ${rider.zoneName ?? rider.zoneSlug}` : ""}
               </option>
             ))}
           </select>

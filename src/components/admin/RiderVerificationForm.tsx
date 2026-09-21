@@ -10,6 +10,8 @@ import {
   type RiderIdType,
 } from "@/types/user";
 import type { RiderWriteInput } from "@/lib/api/admin";
+import { catalogZones, DEFAULT_ZONE_SLUG } from "@/lib/zones";
+import { useAdminZones } from "@/lib/query/hooks";
 
 const inputClass =
   "h-10 w-full rounded-lg bg-[#FAF8F5] px-3 text-[14px] ring-1 ring-black/8 outline-none placeholder:text-[#8A8780]";
@@ -36,7 +38,10 @@ export function RiderVerificationForm({
   const [nextOfKinRelationship, setNextOfKinRelationship] = useState(
     rider?.nextOfKinRelationship ?? "",
   );
+  const [zoneSlug, setZoneSlug] = useState(rider?.zoneSlug ?? DEFAULT_ZONE_SLUG);
   const [error, setError] = useState("");
+  const { data: loadedZones } = useAdminZones();
+  const zones = catalogZones(loadedZones);
 
   useEffect(() => {
     if (!rider) return;
@@ -47,6 +52,7 @@ export function RiderVerificationForm({
     setNextOfKinName(rider.nextOfKinName ?? "");
     setNextOfKinPhone(rider.nextOfKinPhone ?? "");
     setNextOfKinRelationship(rider.nextOfKinRelationship ?? "");
+    setZoneSlug(rider.zoneSlug ?? DEFAULT_ZONE_SLUG);
     setPhoto(null);
     setIdDocument(null);
   }, [rider]);
@@ -85,6 +91,7 @@ export function RiderVerificationForm({
           kinName || kinPhone || nextOfKinRelationship
             ? nextOfKinRelationship || undefined
             : undefined,
+        zoneSlug,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save rider");
@@ -114,6 +121,23 @@ export function RiderVerificationForm({
             required
           />
         </div>
+        <select
+          value={zoneSlug}
+          onChange={(e) => setZoneSlug(e.target.value)}
+          className={`${inputClass} mt-2`}
+          required
+        >
+          {zones.map((zone) => (
+            <option key={zone.slug} value={zone.slug}>
+              {zone.name} ({zone.slug})
+              {zone.active ? "" : " · not live"}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1.5 text-[12px] text-[#8A8780]">
+          This rider only sees jobs in that zone. Existing Yaba riders stay on
+          Yaba unless you move them.
+        </p>
       </fieldset>
 
       <fieldset>

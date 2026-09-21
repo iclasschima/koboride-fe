@@ -14,6 +14,9 @@ export type TripsPage = {
   maxActiveOrders: number;
   activeOrders?: number;
   canPlaceOrder?: boolean;
+  cancelLimited?: boolean;
+  orderHoldReason?: string | null;
+  secondOrderFree?: boolean;
 };
 
 export async function listTripsPage(): Promise<TripsPage> {
@@ -23,6 +26,9 @@ export async function listTripsPage(): Promise<TripsPage> {
     maxActiveOrders: data.maxActiveOrders ?? 3,
     activeOrders: data.activeOrders,
     canPlaceOrder: data.canPlaceOrder,
+    cancelLimited: data.cancelLimited,
+    orderHoldReason: data.orderHoldReason,
+    secondOrderFree: data.secondOrderFree,
   };
 }
 
@@ -51,6 +57,7 @@ export async function initializeOrderPayment(input: CreateTripInput): Promise<Pa
     dropoff: input.dropoff,
     notes: input.notes,
     customerRole: input.customerRole,
+    farePayer: input.farePayer,
     senderName: input.senderName,
     senderPhone: input.senderPhone,
     receiverName: input.receiverName,
@@ -64,6 +71,7 @@ export async function initializeOrderPayment(input: CreateTripInput): Promise<Pa
 
 export type FareEstimate = {
   feeNgn: number;
+  listFeeNgn?: number;
   onlineFeeNgn?: number;
   onlineDiscountNgn?: number;
   payoutNgn: number;
@@ -72,22 +80,38 @@ export type FareEstimate = {
   baseFeeNgn?: number;
   perKmFeeNgn?: number;
   minFareNgn?: number;
+  secondOrderFree?: boolean;
 };
 
-export async function estimateFare(input: {
-  pickupLat: number;
-  pickupLng: number;
-  dropoffLat: number;
-  dropoffLng: number;
-}): Promise<FareEstimate> {
-  return api.post<FareEstimate>("/api/orders/estimate-fare", input, { token: null });
+export async function estimateFare(
+  input: {
+    pickupLat: number;
+    pickupLng: number;
+    dropoffLat: number;
+    dropoffLng: number;
+  },
+  opts?: { token?: string | null },
+): Promise<FareEstimate> {
+  return api.post<FareEstimate>("/api/orders/estimate-fare", input, opts);
 }
+
+export type CancelOrderResult = {
+  trip: Trip;
+  offerAvailable?: boolean;
+  discountAmount?: number;
+};
 
 export async function cancelOrder(
   tripId: string,
   input: { reason: string; note?: string },
-): Promise<Trip> {
-  const data = await api.post<{ trip: Trip }>(`/api/orders/${tripId}/cancel`, input);
+): Promise<CancelOrderResult> {
+  return api.post<CancelOrderResult>(`/api/orders/${tripId}/cancel`, input);
+}
+
+export async function acceptRetentionOffer(tripId: string): Promise<Trip> {
+  const data = await api.post<{ trip: Trip }>(
+    `/api/orders/${tripId}/accept-retention-offer`,
+  );
   return data.trip;
 }
 

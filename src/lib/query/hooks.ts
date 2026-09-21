@@ -5,6 +5,7 @@ import {
   acceptRiderJob,
   advanceRiderStatus,
   type AdvanceRiderInput,
+  acceptRetentionOffer,
   cancelOrder,
   createTrip,
   getClientAppStatus,
@@ -39,6 +40,10 @@ import {
   setAdminRiderApproved,
   getAdminSettings,
   updateAdminSettings,
+  listAdminZones,
+  createAdminZone,
+  updateAdminZone,
+  deleteAdminZone,
 } from "@/lib/api/admin";
 import { queryKeys } from "@/lib/query/keys";
 import {
@@ -102,7 +107,20 @@ export function useCancelOrderMutation() {
   return useMutation({
     mutationFn: (input: { tripId: string; reason: string; note?: string }) =>
       cancelOrder(input.tripId, { reason: input.reason, note: input.note }),
-    onSuccess: async () => {
+    onSuccess: async (result) => {
+      if (result.trip) qc.setQueryData(queryKeys.trips.detail(result.trip.id), result.trip);
+      await qc.invalidateQueries({ queryKey: queryKeys.trips.all });
+      await qc.invalidateQueries({ queryKey: queryKeys.admin.all });
+    },
+  });
+}
+
+export function useAcceptRetentionOfferMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tripId: string) => acceptRetentionOffer(tripId),
+    onSuccess: async (trip) => {
+      qc.setQueryData(queryKeys.trips.detail(trip.id), trip);
       await qc.invalidateQueries({ queryKey: queryKeys.trips.all });
       await qc.invalidateQueries({ queryKey: queryKeys.admin.all });
     },
@@ -408,6 +426,52 @@ export function useUpdateAdminSettingsMutation() {
       await qc.invalidateQueries({ queryKey: queryKeys.admin.settings() });
       await qc.invalidateQueries({ queryKey: queryKeys.app.status() });
       await qc.invalidateQueries({ queryKey: queryKeys.trips.all });
+    },
+  });
+}
+
+export function useAdminZones() {
+  return useQuery({
+    queryKey: queryKeys.admin.zones(),
+    queryFn: listAdminZones,
+  });
+}
+
+function invalidateZoneQueries(qc: ReturnType<typeof useQueryClient>) {
+  return Promise.all([
+    qc.invalidateQueries({ queryKey: queryKeys.admin.zones() }),
+    qc.invalidateQueries({ queryKey: queryKeys.app.status() }),
+    qc.invalidateQueries({ queryKey: queryKeys.admin.riders() }),
+  ]);
+}
+
+export function useCreateAdminZoneMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: createAdminZone,
+    onSuccess: async () => {
+      await invalidateZoneQueries(qc);
+    },
+  });
+}
+
+export function useUpdateAdminZoneMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ slug, input }: { slug: string; input: Parameters<typeof updateAdminZone>[1] }) =>
+      updateAdminZone(slug, input),
+    onSuccess: async () => {
+      await invalidateZoneQueries(qc);
+    },
+  });
+}
+
+export function useDeleteAdminZoneMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteAdminZone,
+    onSuccess: async () => {
+      await invalidateZoneQueries(qc);
     },
   });
 }

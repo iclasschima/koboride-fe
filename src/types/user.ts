@@ -45,6 +45,8 @@ export type OpsUser = {
   nextOfKinPhone?: string | null;
   nextOfKinRelationship?: string | null;
   docsComplete?: boolean;
+  zoneSlug?: string;
+  zoneName?: string;
 };
 
 export type AdminRiderDetail = OpsUser & {
@@ -90,9 +92,33 @@ export type PlatformSettings = {
   perKmFeeNgn: number;
   minFareNgn: number;
   onlinePaymentDiscountNgn: number;
+  stillLookingAfterMinutes: number;
+  rescheduleDelayMinutes: number;
+};
+
+export type PricingZone = {
+  slug: string;
+  name: string;
+  centerLat: number;
+  centerLng: number;
+  radiusKm: number;
+  active: boolean;
+  adjacentSlugs: string[];
+};
+
+export type ZoneWriteInput = {
+  slug?: string;
+  name: string;
+  centerLat: number;
+  centerLng: number;
+  radiusKm: number;
+  active?: boolean;
+  adjacentSlugs?: string[];
 };
 
 export type ClientAppStatus = {
   nonce: number;
   paystackEnabled?: boolean;
+  zones?: PricingZone[];
+  maxDeliveryDistanceKm?: number;
 };

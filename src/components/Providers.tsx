@@ -11,6 +11,7 @@ import { PushBanner } from "@/components/notify/PushBanner";
 import { RiderAutoSwitch } from "@/components/layout/RiderAutoSwitch";
 import { ForceAppReload } from "@/components/ForceAppReload";
 import { PwaInstallProvider } from "@/components/pwa/PwaInstallProvider";
+import { BlockPwaExit } from "@/components/pwa/BlockPwaExit";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -18,6 +19,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <AuthProvider>
         <RiderAuthProvider>
           <PwaInstallProvider>
+            <BlockPwaExit />
             <ForceAppReload />
             <MobileShell>{children}</MobileShell>
             <RiderAutoSwitch />

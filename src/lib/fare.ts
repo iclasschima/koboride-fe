@@ -8,10 +8,16 @@ import {
   type FareRates,
   type PaymentMethod,
 } from "@/types/request";
-import { distanceKmBetween, isInActiveServiceArea } from "@/lib/zones";
+import { formatKm } from "@/lib/format";
+import {
+  distanceKmBetween,
+  isRoutable,
+  routeStops,
+} from "@/lib/zones";
+import type { PricingZone } from "@/types/user";
 
 export {
-  isInActiveServiceArea,
+  isRoutable,
   customerFeeNgn,
   feeFromDistanceKm,
   ONLINE_PAYMENT_DISCOUNT_NGN,
@@ -27,6 +33,26 @@ const DEFAULT_RATES: FareRates = {
   onlinePaymentDiscountNgn: ONLINE_PAYMENT_DISCOUNT_NGN,
 };
 
+export const DEFAULT_MAX_DELIVERY_KM = 10;
+
+/** Instant check from pins we already have — no extra round trip. */
+export function deliveryRangeError(
+  pickupLat: number,
+  pickupLng: number,
+  dropoffLat: number,
+  dropoffLng: number,
+  zones?: readonly PricingZone[] | null,
+  maxKm = DEFAULT_MAX_DELIVERY_KM,
+): string | null {
+  const routed = routeStops(pickupLat, pickupLng, dropoffLat, dropoffLng, zones);
+  if (!routed.ok) return routed.message;
+  const km = distanceKmBetween(pickupLat, pickupLng, dropoffLat, dropoffLng);
+  if (km > maxKm) {
+    return `This delivery is ${formatKm(km)}, which is beyond KoboRide's current bicycle delivery range (${formatKm(maxKm)}).`;
+  }
+  return null;
+}
+
 /** Client-side preview; prefer estimate-fare for the authoritative quote. */
 export function quoteFee(input: {
   pickupLat: number;
@@ -36,10 +62,16 @@ export function quoteFee(input: {
   paymentMethod?: PaymentMethod;
   distanceKm?: number;
   rates?: FareRates;
+  zones?: readonly PricingZone[] | null;
 }): number {
   if (
-    !isInActiveServiceArea(input.pickupLat, input.pickupLng) ||
-    !isInActiveServiceArea(input.dropoffLat, input.dropoffLng)
+    !isRoutable(
+      input.pickupLat,
+      input.pickupLng,
+      input.dropoffLat,
+      input.dropoffLng,
+      input.zones,
+    )
   ) {
     return 0;
   }

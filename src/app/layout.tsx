@@ -18,6 +18,7 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.koboride.ng"),
   title: {
     default: "KoboRide — Errands on a bike",
     template: "%s · KoboRide",
@@ -31,7 +32,29 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
   },
   icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    type: "website",
+    siteName: "KoboRide",
+    title: "KoboRide — Errands on a bike",
+    description: "Send a package across Yaba on a bike. Pay cash or card.",
+    url: "https://www.koboride.ng",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "KoboRide",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "KoboRide — Errands on a bike",
+    description: "Send a package across Yaba on a bike. Pay cash or card.",
+    images: ["/og.png"],
   },
 };
 

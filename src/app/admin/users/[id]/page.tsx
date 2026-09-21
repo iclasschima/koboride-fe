@@ -100,8 +100,12 @@ export default function AdminUserDetailPage() {
       {customer.cancelLimited ? (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-black/6 bg-white px-4 py-3">
           <p className="text-[13px] text-[#8A8780]">
-            This user has used all {customer.cancelLimit ?? 3} cancels in the last{" "}
-            {customer.cancelWindowHours ?? 24} hours.
+            This user cancelled {customer.cancelLimit ?? 3} times in the last{" "}
+            {(customer.cancelWindowHours ?? 1) === 1
+              ? "hour"
+              : `${customer.cancelWindowHours ?? 1} hours`}
+            , so they cannot book until the window resets. They can still cancel
+            a live order.
           </p>
           <Button
             type="button"
@@ -110,7 +114,7 @@ export default function AdminUserDetailPage() {
             disabled={resetCancels.isPending}
             onClick={() => void resetCancels.mutateAsync(customer.id)}
           >
-            {resetCancels.isPending ? "Resetting…" : "Allow cancels again"}
+            {resetCancels.isPending ? "Resetting…" : "Allow bookings again"}
           </Button>
         </div>
       ) : null}

@@ -1,4 +1,4 @@
-import type { Trip, TripStatus } from "@/types/request";
+import { type Trip, type TripStatus } from "@/types/request";
 
 export function canUseNotifications() {
   return typeof window !== "undefined" && "Notification" in window;

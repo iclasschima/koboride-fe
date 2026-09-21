@@ -90,11 +90,11 @@ export default function RiderEarningsPage() {
                     </p>
                   </div>
                   <p className="mt-1 text-[12px] text-[#8A8780]">
-                    {trip.paymentMethod === "paystack" && trip.paymentStatus === "paid"
-                      ? `Paid online ${formatNaira(trip.feeNgn)}`
-                      : `Collected ${formatNaira(trip.feeNgn)}`}{" "}
-                    · commission{" "}
-                    {formatNaira(commissionNgn(trip.feeNgn, trip.payoutNgn))}
+                    {trip.feeNgn <= 0
+                      ? "No cash · KoboRide paid you"
+                      : trip.paymentMethod === "paystack" && trip.paymentStatus === "paid"
+                        ? `Paid online ${formatNaira(trip.feeNgn)} · commission ${formatNaira(commissionNgn(trip.feeNgn, trip.payoutNgn))}`
+                        : `Collected ${formatNaira(trip.feeNgn)} · commission ${formatNaira(commissionNgn(trip.feeNgn, trip.payoutNgn))}`}
                   </p>
                 </li>
               );

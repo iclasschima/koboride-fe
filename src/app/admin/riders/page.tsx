@@ -87,7 +87,8 @@ export default function AdminRidersPage() {
                         </p>
                         <p className="mt-0.5 text-[13px] text-brand">{rider.phone}</p>
                         <p className="mt-1 text-[12px] text-[#8A8780]">
-                          Added {formatDate(rider.createdAt)}
+                          {rider.zoneName ?? rider.zoneSlug ?? "Yaba"} · Added{" "}
+                          {formatDate(rider.createdAt)}
                         </p>
                       </div>
                     </Link>
@@ -123,6 +124,7 @@ export default function AdminRidersPage() {
                   <tr>
                     <th className="px-4 py-3 font-semibold">Rider</th>
                     <th className="px-4 py-3 font-semibold">Phone</th>
+                    <th className="px-4 py-3 font-semibold">Zone</th>
                     <th className="px-4 py-3 font-semibold">Added</th>
                     <th className="px-4 py-3 font-semibold">Status</th>
                   </tr>
@@ -149,6 +151,12 @@ export default function AdminRidersPage() {
                         </Link>
                       </td>
                       <td className="px-4 py-3">{rider.phone}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {rider.zoneName ?? rider.zoneSlug ?? "Yaba"}
+                        {rider.zoneSlug ? (
+                          <span className="ml-1 text-[#8A8780]">({rider.zoneSlug})</span>
+                        ) : null}
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap text-[#8A8780]">
                         {formatDate(rider.createdAt)}
                       </td>
