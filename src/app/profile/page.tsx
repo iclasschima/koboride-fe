@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { WhatsAppSupport } from "@/components/support/WhatsAppSupport";
 import { EnableNotifications } from "@/components/notify/EnableNotifications";
@@ -62,6 +63,12 @@ export default function ProfilePage() {
         <Button className="mt-5" onClick={() => openAuth("login")}>
           Sign in
         </Button>
+        <Link
+          href="/about"
+          className="mt-6 text-[14px] font-semibold text-brand"
+        >
+          About KoboRide
+        </Link>
         <WhatsAppSupport className="mt-8 text-left" />
       </div>
     );
@@ -132,6 +139,13 @@ export default function ProfilePage() {
       </section>
 
       <AddToHomeScreenCard />
+
+      <Link
+        href="/about"
+        className="mt-6 inline-block text-[14px] font-semibold text-brand"
+      >
+        About KoboRide
+      </Link>
 
       <WhatsAppSupport className="mt-6" />
 

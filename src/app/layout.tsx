@@ -19,12 +19,15 @@ const spaceGrotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.koboride.ng"),
+  alternates: {
+    canonical: "https://www.koboride.ng",
+  },
   title: {
     default: "KoboRide — Errands on a bike",
     template: "%s · KoboRide",
   },
   description:
-    "Send a package across Yaba on a bike. Pay cash or card.",
+    "KoboRide is a bicycle courier in Lagos. Book a rider to pick up a package and deliver it. Pay cash or card.",
   applicationName: "KoboRide",
   appleWebApp: {
     capable: true,
@@ -39,7 +42,8 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "KoboRide",
     title: "KoboRide — Errands on a bike",
-    description: "Send a package across Yaba on a bike. Pay cash or card.",
+    description:
+      "KoboRide is a bicycle courier in Lagos. Book a rider to pick up a package and deliver it. Pay cash or card.",
     url: "https://www.koboride.ng",
     images: [
       {
@@ -53,7 +57,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "KoboRide — Errands on a bike",
-    description: "Send a package across Yaba on a bike. Pay cash or card.",
+    description:
+      "KoboRide is a bicycle courier in Lagos. Book a rider to pick up a package and deliver it. Pay cash or card.",
     images: ["/og.png"],
   },
 };

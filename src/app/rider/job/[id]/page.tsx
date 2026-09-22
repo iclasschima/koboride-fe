@@ -114,7 +114,9 @@ export default function RiderJobPage() {
   const pickup = atPickup(phase);
   const dropoff = atDropoff(phase);
   const canDrop = canRiderRelease(trip);
-  const needsPin = Boolean(trip.requiresDeliveryPin ?? trip.deliveryPin);
+  const needsPin =
+    trip.requiresDeliveryPin ??
+    (trip.customerRole !== "receiver" && Boolean(trip.deliveryPin));
   const action = ACTION[phase];
   const place = pickup ? trip.pickup : trip.dropoff;
   const maps = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place)}`;

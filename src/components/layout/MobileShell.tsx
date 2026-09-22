@@ -20,7 +20,10 @@ export function MobileShell({ children }: { children: React.ReactNode }) {
     !isAdmin &&
     !isRider &&
     !isTripDetail &&
-    (pathname === "/" || pathname === "/trips" || pathname === "/profile");
+    (pathname === "/" ||
+      pathname === "/trips" ||
+      pathname === "/profile" ||
+      pathname === "/about");
 
   const showRiderNav =
     isRider && pathname !== "/rider/login" && riderAuthenticated;

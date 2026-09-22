@@ -38,7 +38,7 @@ function newSession() {
 }
 
 const PEEK = 0.34;
-const PROMO_PEEK = 0.5;
+const PROMO_PEEK = 0.4;
 const MID = 0.62;
 const TALL = 0.9;
 
@@ -589,17 +589,19 @@ export function BookingSheet({
                   event.preventDefault();
                   startBooking();
                 }}
-                className="relative z-50 mt-3 w-full rounded-[22px] bg-accent px-4 py-3.5 text-left text-[#1A1A16] shadow-[0_8px_20px_rgba(245,166,35,0.28)] active:brightness-95"
+                className="relative z-50 mt-2.5 w-full rounded-2xl bg-accent px-3 py-2.5 text-left text-[#1A1A16] shadow-[0_6px_16px_rgba(245,166,35,0.22)] active:brightness-95"
               >
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#1A1A16] px-2 py-0.5 text-[10px] font-bold tracking-[0.07em] text-accent uppercase">
-                  <Star className="h-3 w-3" strokeWidth={2.6} fill="currentColor" />
-                  Offer
+                <span className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#1A1A16] px-1.5 py-0.5 text-[9px] font-bold tracking-[0.06em] text-accent uppercase">
+                    <Star className="h-2.5 w-2.5" strokeWidth={2.6} fill="currentColor" />
+                    Offer
+                  </span>
+                  <span className="font-display text-[15px] font-semibold tracking-[-0.02em]">
+                    2nd order free
+                  </span>
                 </span>
-                <p className="mt-1.5 font-display text-[18px] leading-tight font-semibold tracking-[-0.03em]">
-                  2nd order free
-                </p>
-                <p className="mt-0.5 text-[13px] leading-snug text-[#1A1A16]/70">
-                  Send one package. The next delivery is on us.
+                <p className="mt-0.5 text-[12px] leading-snug text-[#1A1A16]/70">
+                  Send one. The next delivery is on us.
                 </p>
               </button>
             ) : null}

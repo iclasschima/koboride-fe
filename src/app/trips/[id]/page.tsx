@@ -315,7 +315,7 @@ export default function TripDetailPage() {
                   </>
                 )}
               </p>
-              {trip.deliveryPin ? (
+              {trip.deliveryPin && trip.customerRole !== "receiver" ? (
                 <DeliveryPin
                   pin={trip.deliveryPin}
                   revealed={Boolean(trip.deliveryPinRevealed)}
