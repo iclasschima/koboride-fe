@@ -1,11 +1,11 @@
 import type { MetadataRoute } from "next";
+import { COMPANY_DESCRIPTION, COMPANY_NAME } from "@/lib/company";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "KoboRide",
-    short_name: "KoboRide",
-    description:
-      "KoboRide is a bicycle courier in Lagos. Book a rider to pick up a package and deliver it. Pay cash or card.",
+    name: COMPANY_NAME,
+    short_name: COMPANY_NAME,
+    description: COMPANY_DESCRIPTION,
     start_url: "/",
     scope: "/",
     display: "standalone",

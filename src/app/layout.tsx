@@ -3,6 +3,12 @@ import { Inter, Space_Grotesk } from "next/font/google";
 import { Clarity } from "@/components/analytics/Clarity";
 import { Contentsquare } from "@/components/analytics/Contentsquare";
 import { Providers } from "@/components/Providers";
+import {
+  COMPANY_DESCRIPTION,
+  COMPANY_NAME,
+  COMPANY_SITE,
+  COMPANY_TAGLINE,
+} from "@/lib/company";
 import "./globals.css";
 
 const inter = Inter({
@@ -18,20 +24,19 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.koboride.ng"),
+  metadataBase: new URL(COMPANY_SITE),
   alternates: {
-    canonical: "https://www.koboride.ng",
+    canonical: COMPANY_SITE,
   },
   title: {
-    default: "KoboRide — Errands on a bike",
-    template: "%s · KoboRide",
+    default: `${COMPANY_NAME} — ${COMPANY_TAGLINE}`,
+    template: `%s · ${COMPANY_NAME}`,
   },
-  description:
-    "KoboRide is a bicycle courier in Lagos. Book a rider to pick up a package and deliver it. Pay cash or card.",
-  applicationName: "KoboRide",
+  description: COMPANY_DESCRIPTION,
+  applicationName: COMPANY_NAME,
   appleWebApp: {
     capable: true,
-    title: "KoboRide",
+    title: COMPANY_NAME,
     statusBarStyle: "black-translucent",
   },
   icons: {
@@ -40,25 +45,23 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    siteName: "KoboRide",
-    title: "KoboRide — Errands on a bike",
-    description:
-      "KoboRide is a bicycle courier in Lagos. Book a rider to pick up a package and deliver it. Pay cash or card.",
-    url: "https://www.koboride.ng",
+    siteName: COMPANY_NAME,
+    title: `${COMPANY_NAME} — ${COMPANY_TAGLINE}`,
+    description: COMPANY_DESCRIPTION,
+    url: COMPANY_SITE,
     images: [
       {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "KoboRide",
+        alt: COMPANY_NAME,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "KoboRide — Errands on a bike",
-    description:
-      "KoboRide is a bicycle courier in Lagos. Book a rider to pick up a package and deliver it. Pay cash or card.",
+    title: `${COMPANY_NAME} — ${COMPANY_TAGLINE}`,
+    description: COMPANY_DESCRIPTION,
     images: ["/og.png"],
   },
 };

@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import {
   COMPANY_ADDRESS,
+  COMPANY_DESCRIPTION,
   COMPANY_EMAIL,
   COMPANY_NAME,
   COMPANY_PHONE_DISPLAY,
   COMPANY_PHONE_TEL,
   COMPANY_SERVICES,
   COMPANY_SITE,
+  COMPANY_TAGLINE,
   companyAddressText,
 } from "@/lib/company";
 
 export const metadata: Metadata = {
   title: "About",
-  description:
-    "KoboRide is a bicycle courier in Lagos. We pick up packages and deliver them on a bike. Pay cash or card.",
+  description: COMPANY_DESCRIPTION,
   alternates: { canonical: `${COMPANY_SITE}/about` },
 };
 
@@ -22,8 +22,7 @@ const jsonLd = {
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
   name: COMPANY_NAME,
-  description:
-    "Bicycle courier service in Lagos. Package pickup and drop-off. Cash or card.",
+  description: COMPANY_DESCRIPTION,
   url: COMPANY_SITE,
   email: COMPANY_EMAIL,
   telephone: COMPANY_PHONE_DISPLAY,
@@ -33,7 +32,6 @@ const jsonLd = {
     addressLocality: COMPANY_ADDRESS.city,
     addressCountry: "NG",
   },
-  areaServed: "Lagos, Nigeria",
 };
 
 export default function AboutPage() {
@@ -47,7 +45,7 @@ export default function AboutPage() {
         {COMPANY_NAME}
       </p>
       <h1 className="mt-1 font-display text-[28px] leading-tight font-bold tracking-[-0.04em] text-[#1A1A16]">
-        Bicycle courier in Lagos
+        {COMPANY_TAGLINE}
       </h1>
       <p className="mt-3 text-[16px] leading-relaxed text-[#5C5A54]">
         KoboRide picks up packages and delivers them on a bike. You book a
@@ -101,13 +99,6 @@ export default function AboutPage() {
           </dd>
         </div>
       </dl>
-
-      <Link
-        href="/"
-        className="mt-8 inline-flex text-[14px] font-semibold text-brand"
-      >
-        Book a delivery
-      </Link>
     </div>
   );
 }

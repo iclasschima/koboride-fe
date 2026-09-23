@@ -1,4 +1,7 @@
 export const COMPANY_NAME = "KoboRide";
+export const COMPANY_TAGLINE = "Errands on a bike";
+export const COMPANY_DESCRIPTION =
+  "Book a rider to pick up a package and drop it off. Send or receive. Pay cash or card.";
 export const COMPANY_EMAIL = "hello@koboride.ng";
 export const COMPANY_PHONE_DISPLAY = "+234 903 186 1100";
 export const COMPANY_PHONE_TEL = "tel:+2349031861100";
@@ -17,7 +20,7 @@ export function companyAddressText() {
 export const COMPANY_SERVICES = [
   {
     title: "Package pickup and drop-off",
-    body: "Book a rider to collect a package from one Lagos address and deliver it to another. You can send or receive.",
+    body: "Book a rider to collect a package from one address and deliver it to another. You can send or receive.",
   },
   {
     title: "Cash or card",
