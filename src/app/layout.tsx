@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
-import { Clarity } from "@/components/analytics/Clarity";
-import { Contentsquare } from "@/components/analytics/Contentsquare";
 import { Providers } from "@/components/Providers";
 import {
   COMPANY_DESCRIPTION,
@@ -86,8 +84,6 @@ export default function RootLayout({
       className={`${inter.variable} ${spaceGrotesk.variable}`}
     >
       <body className={`${inter.className} antialiased`}>
-        <Clarity />
-        <Contentsquare />
         <Providers>{children}</Providers>
       </body>
     </html>

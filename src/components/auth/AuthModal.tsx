@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { Button } from "@/components/ui/Button";
 import { NG_PHONE_ERROR, normalizeNgPhone } from "@/lib/phone";
 import { activatePush, primePushPermission } from "@/lib/push";
+import { otpHelpWhatsAppUrl } from "@/lib/support";
 
 const inputClass =
   "h-12 w-full rounded-2xl bg-[#EEEDE8] px-3.5 text-[15px] text-[#1A1A16] outline-none placeholder:text-[#8A8780]";
@@ -15,6 +16,8 @@ const titleClass =
   "text-center font-display text-[26px] font-bold tracking-[-0.03em] text-[#1A1A16]";
 
 const RESEND_SECONDS = 60;
+/** First text, then one resend. After that, delivery is a support issue. */
+const MAX_OTP_SENDS = 2;
 
 function formatCountdown(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
@@ -76,8 +79,11 @@ function LoginForm({ titleId }: { titleId: string }) {
   const [error, setError] = useState("");
   const [resendAt, setResendAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [sends, setSends] = useState(0);
+  const [sentTo, setSentTo] = useState<string | null>(null);
   const e164 = normalizeNgPhone(phone);
   const resendIn = resendAt ? Math.max(0, Math.ceil((resendAt - now) / 1000)) : 0;
+  const canResend = sends < MAX_OTP_SENDS;
 
   useEffect(() => {
     if (!resendAt) return;
@@ -89,27 +95,47 @@ function LoginForm({ titleId }: { titleId: string }) {
     return () => window.clearInterval(id);
   }, [resendAt]);
 
-  async function onSend(e?: React.FormEvent) {
-    e?.preventDefault();
-    if (!e164) {
-      setError(NG_PHONE_ERROR);
-      return;
-    }
+  async function deliverCode(phoneNumber: string, nextSends: number) {
     setBusy(true);
     setError("");
     try {
       primePushPermission();
-      const result = await sendOtp(e164);
+      const result = await sendOtp(phoneNumber);
       setDevCode(result.devCode ?? "");
       setCode("");
-      setResendAt(Date.now() + RESEND_SECONDS * 1000);
-      setNow(Date.now());
+      setSentTo(phoneNumber);
+      setSends(nextSends);
+      if (nextSends < MAX_OTP_SENDS) {
+        setResendAt(Date.now() + RESEND_SECONDS * 1000);
+        setNow(Date.now());
+      } else {
+        setResendAt(null);
+      }
       setStep("code");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send code");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function onSubmitPhone(e: React.FormEvent) {
+    e.preventDefault();
+    if (!e164) {
+      setError(NG_PHONE_ERROR);
+      return;
+    }
+    if (e164 === sentTo) {
+      setError("");
+      setStep("code");
+      return;
+    }
+    await deliverCode(e164, 1);
+  }
+
+  function onResend() {
+    if (!sentTo || !canResend || resendIn > 0) return;
+    void deliverCode(sentTo, sends + 1);
   }
 
   async function onVerify(e: React.FormEvent) {
@@ -167,25 +193,40 @@ function LoginForm({ titleId }: { titleId: string }) {
           >
             Change number
           </button>
-          <button
-            type="button"
-            className={resendIn > 0 ? "text-[#8A8780]" : "text-brand"}
-            disabled={busy || resendIn > 0}
-            onClick={() => void onSend()}
-          >
-            {resendIn > 0
-              ? `Resend in ${formatCountdown(resendIn)}`
-              : busy
-                ? "Sending…"
-                : "Resend code"}
-          </button>
+          {canResend ? (
+            <button
+              type="button"
+              className={resendIn > 0 ? "text-[#8A8780]" : "text-brand"}
+              disabled={busy || resendIn > 0}
+              onClick={onResend}
+            >
+              {resendIn > 0
+                ? `Resend in ${formatCountdown(resendIn)}`
+                : busy
+                  ? "Sending…"
+                  : "Resend code"}
+            </button>
+          ) : null}
         </div>
+        {canResend ? null : (
+          <p className="text-center text-[13px] text-[#8A8780]">
+            Didn&apos;t get a code?{" "}
+            <a
+              href={e164 ? otpHelpWhatsAppUrl(e164) : undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-brand"
+            >
+              Contact support
+            </a>
+          </p>
+        )}
       </form>
     );
   }
 
   return (
-    <form onSubmit={onSend} className="flex flex-col gap-3">
+    <form onSubmit={onSubmitPhone} className="flex flex-col gap-3">
       <h2 id={titleId} className={titleClass}>
         Sign in to KoboRide
       </h2>

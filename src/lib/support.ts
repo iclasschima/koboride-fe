@@ -11,3 +11,8 @@ export function orderReportWhatsAppUrl(orderId: string) {
   const text = `Hi, I need to report a problem with KoboRide order ${shortId(orderId)}.`;
   return `https://wa.me/${SUPPORT_WHATSAPP_PHONE}?text=${encodeURIComponent(text)}`;
 }
+
+export function otpHelpWhatsAppUrl(phone: string) {
+  const text = `Hi, I didn't get my KoboRide verification code for ${phone}.`;
+  return `https://wa.me/${SUPPORT_WHATSAPP_PHONE}?text=${encodeURIComponent(text)}`;
+}
