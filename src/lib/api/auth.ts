@@ -1,8 +1,22 @@
-import { api, getStoredUser, getToken, loginCustomer, logoutCustomer, setSession } from "@/lib/api/client";
+import { api, getStoredUser, getToken, logoutCustomer, setSession } from "@/lib/api/client";
 import type { User } from "@/types/user";
 
-export async function signIn(phone: string): Promise<User> {
-  const data = await loginCustomer(phone);
+export type OtpRequest = {
+  expires_in_seconds: number;
+  devCode?: string;
+};
+
+export async function requestOtp(phone: string): Promise<OtpRequest> {
+  return api.post<OtpRequest>("/api/auth/otp/request", { phone }, { token: null });
+}
+
+export async function verifyOtp(phone: string, code: string): Promise<User> {
+  const data = await api.post<{ token: string; user: User }>(
+    "/api/auth/otp/verify",
+    { phone, code },
+    { token: null },
+  );
+  setSession(data.token, data.user);
   return data.user;
 }
 

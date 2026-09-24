@@ -14,6 +14,14 @@ const inputClass =
 const titleClass =
   "text-center font-display text-[26px] font-bold tracking-[-0.03em] text-[#1A1A16]";
 
+const RESEND_SECONDS = 60;
+
+function formatCountdown(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
 export function AuthModal() {
   const pathname = usePathname();
   const { authOpen, closeAuth } = useAuth();
@@ -59,14 +67,30 @@ export function AuthModal() {
 }
 
 function LoginForm({ titleId }: { titleId: string }) {
-  const { login } = useAuth();
+  const { sendOtp, verify } = useAuth();
+  const [step, setStep] = useState<"phone" | "code">("phone");
   const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [devCode, setDevCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [resendAt, setResendAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const e164 = normalizeNgPhone(phone);
+  const resendIn = resendAt ? Math.max(0, Math.ceil((resendAt - now) / 1000)) : 0;
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  useEffect(() => {
+    if (!resendAt) return;
+    const id = window.setInterval(() => {
+      const next = Date.now();
+      setNow(next);
+      if (next >= resendAt) window.clearInterval(id);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [resendAt]);
+
+  async function onSend(e?: React.FormEvent) {
+    e?.preventDefault();
     if (!e164) {
       setError(NG_PHONE_ERROR);
       return;
@@ -75,22 +99,98 @@ function LoginForm({ titleId }: { titleId: string }) {
     setError("");
     try {
       primePushPermission();
-      const user = await login(e164);
-      void activatePush(user.isRider ? "rider" : "customer");
+      const result = await sendOtp(e164);
+      setDevCode(result.devCode ?? "");
+      setCode("");
+      setResendAt(Date.now() + RESEND_SECONDS * 1000);
+      setNow(Date.now());
+      setStep("code");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not sign in");
+      setError(err instanceof Error ? err.message : "Could not send code");
     } finally {
       setBusy(false);
     }
   }
 
+  async function onVerify(e: React.FormEvent) {
+    e.preventDefault();
+    if (!e164 || code.length !== 4) return;
+    setBusy(true);
+    setError("");
+    try {
+      const user = await verify(e164, code);
+      void activatePush(user.isRider ? "rider" : "customer");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Incorrect code");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (step === "code") {
+    return (
+      <form onSubmit={onVerify} className="flex flex-col gap-3">
+        <h2 id={titleId} className={titleClass}>
+          Enter the code
+        </h2>
+        <p className="mb-1 text-center text-[14px] text-[#8A8780]">
+          {`We sent a 4-digit code to +234 ${phone}.${devCode ? ` Demo code: ${devCode}.` : ""}`}
+        </p>
+        <input
+          className={`${inputClass} text-center tracking-[0.28em]`}
+          placeholder="••••"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          value={code}
+          onChange={(e) => {
+            setCode(e.target.value.replace(/\D/g, "").slice(0, 4));
+            if (error) setError("");
+          }}
+          required
+          disabled={busy}
+          aria-label="Verification code"
+        />
+        {error ? <p className="text-[13px] font-medium text-danger">{error}</p> : null}
+        <Button type="submit" disabled={busy || code.length !== 4}>
+          {busy ? "Checking…" : "Verify"}
+        </Button>
+        <div className="flex items-center justify-between text-[13px] font-semibold">
+          <button
+            type="button"
+            className="text-[#8A8780]"
+            disabled={busy}
+            onClick={() => {
+              setStep("phone");
+              setError("");
+              setCode("");
+            }}
+          >
+            Change number
+          </button>
+          <button
+            type="button"
+            className={resendIn > 0 ? "text-[#8A8780]" : "text-brand"}
+            disabled={busy || resendIn > 0}
+            onClick={() => void onSend()}
+          >
+            {resendIn > 0
+              ? `Resend in ${formatCountdown(resendIn)}`
+              : busy
+                ? "Sending…"
+                : "Resend code"}
+          </button>
+        </div>
+      </form>
+    );
+  }
+
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-3">
+    <form onSubmit={onSend} className="flex flex-col gap-3">
       <h2 id={titleId} className={titleClass}>
         Sign in to KoboRide
       </h2>
       <p className="mb-1 text-center text-[14px] text-[#8A8780]">
-        Continue with a phone number.
+        We&apos;ll text you a code to confirm this number.
       </p>
       <NigeriaPhoneField
         value={phone}
@@ -102,7 +202,7 @@ function LoginForm({ titleId }: { titleId: string }) {
       />
       {error ? <p className="text-[13px] font-medium text-danger">{error}</p> : null}
       <Button type="submit" disabled={busy || !e164}>
-        {busy ? "Signing in…" : "Continue"}
+        {busy ? "Sending…" : "Send code"}
       </Button>
     </form>
   );

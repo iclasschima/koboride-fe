@@ -85,19 +85,6 @@ export function getAdminToken(): string | null {
   return readPersisted(ADMIN_TOKEN_KEY);
 }
 
-export async function loginCustomer(
-  phone: string,
-  name?: string,
-): Promise<{ token: string; user: SessionUser }> {
-  const data = await request<{ token: string; user: SessionUser }>("/api/auth/customer/login", {
-    method: "POST",
-    body: JSON.stringify({ phone, ...(name ? { name } : {}) }),
-    token: null,
-  });
-  setSession(data.token, data.user);
-  return data;
-}
-
 export async function loginRider(
   phone: string,
 ): Promise<{ token: string; user: SessionUser; rider: { id: string; approved: boolean; online: boolean } }> {

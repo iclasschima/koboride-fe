@@ -11,8 +11,10 @@ import {
 import {
   getStoredSession,
   logout as apiLogout,
-  signIn,
+  requestOtp,
   updateProfile,
+  verifyOtp,
+  type OtpRequest,
 } from "@/lib/api/auth";
 import { api, setSession } from "@/lib/api/client";
 import type { User } from "@/types/user";
@@ -26,7 +28,8 @@ type AuthContextValue = {
   authOpen: AuthMode;
   openAuth: (mode?: AuthMode) => void;
   closeAuth: () => void;
-  login: (phone: string) => Promise<User>;
+  sendOtp: (phone: string) => Promise<OtpRequest>;
+  verify: (phone: string, code: string) => Promise<User>;
   saveProfile: (input: { name: string }) => Promise<User>;
   logout: () => Promise<void>;
 };
@@ -62,8 +65,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const closeAuth = useCallback(() => setAuthOpen(null), []);
 
-  const login = useCallback(async (phone: string) => {
-    const next = await signIn(phone);
+  const sendOtp = useCallback(async (phone: string) => requestOtp(phone), []);
+
+  const verify = useCallback(async (phone: string, code: string) => {
+    const next = await verifyOtp(phone, code);
     setUser(next);
     setToken(getStoredSession().token);
     if (next.isRider || next.name) setAuthOpen(null);
@@ -92,11 +97,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       authOpen,
       openAuth,
       closeAuth,
-      login,
+      sendOtp,
+      verify,
       saveProfile,
       logout,
     }),
-    [ready, token, user, authOpen, openAuth, closeAuth, login, saveProfile, logout],
+    [ready, token, user, authOpen, openAuth, closeAuth, sendOtp, verify, saveProfile, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
