@@ -9,19 +9,42 @@ import {
   LogOut,
   Settings,
   Users,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { logoutAdmin } from "@/lib/api/client";
 
-const NAV = [
-  { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
-  { href: "/admin/orders", label: "Orders", icon: ClipboardList, exact: false },
-  { href: "/admin/users", label: "Users", icon: Users, exact: false },
-  { href: "/admin/riders", label: "Riders", icon: Bike, exact: false },
-  { href: "/admin/settings", label: "Settings", icon: Settings, exact: false },
-] as const;
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  exact?: boolean;
+};
 
-function isActive(pathname: string, href: string, exact: boolean) {
+const GROUPS: Array<{ label: string; items: NavItem[] }> = [
+  {
+    label: "Operate",
+    items: [
+      { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
+      { href: "/admin/orders", label: "Orders", icon: ClipboardList },
+    ],
+  },
+  {
+    label: "Manage",
+    items: [
+      { href: "/admin/users", label: "Users", icon: Users },
+      { href: "/admin/riders", label: "Riders", icon: Bike },
+    ],
+  },
+  {
+    label: "Workspace",
+    items: [{ href: "/admin/settings", label: "Settings", icon: Settings }],
+  },
+];
+
+const FLAT_NAV = GROUPS.flatMap((group) => group.items);
+
+function isActive(pathname: string, href: string, exact?: boolean) {
   return exact
     ? pathname === href
     : pathname === href || pathname.startsWith(`${href}/`);
@@ -48,26 +71,35 @@ export function AdminSidebar() {
           </p>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3 py-4">
-          {NAV.map((item) => {
-            const active = isActive(pathname, item.href, item.exact);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[14px] font-medium",
-                  active
-                    ? "bg-white/12 text-white"
-                    : "text-white/70 hover:bg-white/8 hover:text-white",
-                )}
-              >
-                <Icon className="h-4 w-4" strokeWidth={2} />
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
+          {GROUPS.map((group) => (
+            <div key={group.label} className="pt-3 first:pt-0">
+              <p className="px-3 pb-1.5 text-[11px] font-medium tracking-[0.08em] text-white/45 uppercase">
+                {group.label}
+              </p>
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const active = isActive(pathname, item.href, item.exact);
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[14px] font-medium",
+                        active
+                          ? "bg-white/12 text-white"
+                          : "text-white/70 hover:bg-white/8 hover:text-white",
+                      )}
+                    >
+                      <Icon className="h-4 w-4" strokeWidth={2} />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="space-y-1 border-t border-white/10 px-3 py-4">
@@ -100,7 +132,7 @@ export function AdminSidebar() {
         aria-label="Ops"
       >
         <ul className="grid grid-cols-5">
-          {NAV.map((item) => {
+          {FLAT_NAV.map((item) => {
             const active = isActive(pathname, item.href, item.exact);
             const Icon = item.icon;
             return (

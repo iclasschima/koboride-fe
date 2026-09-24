@@ -3,9 +3,10 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ActiveToggle } from "@/components/admin/ActiveToggle";
+import { KpiCard } from "@/components/admin/KpiCard";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatPercent } from "@/lib/format";
 import { useAdminRiders, useSetRiderApprovedMutation } from "@/lib/query/hooks";
 
 export default function AdminRidersPage() {
@@ -21,6 +22,19 @@ export default function AdminRidersPage() {
       `${rider.name} ${rider.phone}`.toLowerCase().includes(q),
     );
   }, [riders, query]);
+
+  const active = riders.filter((rider) => rider.active ?? rider.approved).length;
+  const docsMissing = riders.filter((rider) => rider.docsComplete === false).length;
+  const completed = riders.reduce((sum, rider) => sum + (rider.completedCount ?? 0), 0);
+  const zoneRates = new Map<string, { name: string; rate: number }>();
+  for (const rider of riders) {
+    if (!rider.zoneSlug || rider.zoneAcceptanceRate == null) continue;
+    zoneRates.set(rider.zoneSlug, {
+      name: rider.zoneName ?? rider.zoneSlug,
+      rate: rider.zoneAcceptanceRate,
+    });
+  }
+  const zones = [...zoneRates.values()];
 
   return (
     <div>
@@ -41,6 +55,35 @@ export default function AdminRidersPage() {
       {error ? (
         <p className="mt-3 text-[13px] font-medium text-danger">{error}</p>
       ) : null}
+
+      <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiCard
+          label="Riders"
+          value={isPending ? "—" : String(riders.length)}
+          hint={`${active} active`}
+        />
+        <KpiCard
+          label="Docs missing"
+          value={isPending ? "—" : String(docsMissing)}
+          tone={docsMissing > 0 ? "amber" : "default"}
+        />
+        <KpiCard
+          label="Completed"
+          value={isPending ? "—" : String(completed)}
+          hint="All riders"
+        />
+        <KpiCard
+          label="Zone taken"
+          value={isPending || zones.length !== 1 ? "—" : formatPercent(zones[0].rate)}
+          hint={
+            zones.length === 1
+              ? `Jobs in ${zones[0].name} that got a rider`
+              : zones.length > 1
+                ? "See each rider’s zone"
+                : "No zone jobs yet"
+          }
+        />
+      </div>
 
       <input
         value={query}
@@ -87,8 +130,14 @@ export default function AdminRidersPage() {
                         </p>
                         <p className="mt-0.5 text-[13px] text-brand">{rider.phone}</p>
                         <p className="mt-1 text-[12px] text-[#8A8780]">
-                          {rider.zoneName ?? rider.zoneSlug ?? "Yaba"} · Added{" "}
-                          {formatDate(rider.createdAt)}
+                          {rider.zoneName ?? rider.zoneSlug ?? "Yaba"} ·{" "}
+                          {rider.completedCount ?? 0} completed
+                          {rider.zoneAcceptanceRate != null
+                            ? ` · ${formatPercent(rider.zoneAcceptanceRate)} zone taken`
+                            : ""}
+                        </p>
+                        <p className="mt-0.5 text-[12px] text-[#8A8780]">
+                          Added {formatDate(rider.createdAt)}
                         </p>
                       </div>
                     </Link>
@@ -119,12 +168,13 @@ export default function AdminRidersPage() {
             </ul>
 
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[560px] text-left text-[13px]">
+              <table className="w-full min-w-[640px] text-left text-[13px]">
                 <thead className="border-b border-black/6 bg-[#FAFAF7] text-[11px] font-semibold tracking-[0.05em] text-[#8A8780] uppercase">
                   <tr>
                     <th className="px-4 py-3 font-semibold">Rider</th>
                     <th className="px-4 py-3 font-semibold">Phone</th>
                     <th className="px-4 py-3 font-semibold">Zone</th>
+                    <th className="px-4 py-3 font-semibold">Completed</th>
                     <th className="px-4 py-3 font-semibold">Added</th>
                     <th className="px-4 py-3 font-semibold">Status</th>
                   </tr>
@@ -152,10 +202,20 @@ export default function AdminRidersPage() {
                       </td>
                       <td className="px-4 py-3">{rider.phone}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        {rider.zoneName ?? rider.zoneSlug ?? "Yaba"}
-                        {rider.zoneSlug ? (
-                          <span className="ml-1 text-[#8A8780]">({rider.zoneSlug})</span>
-                        ) : null}
+                        <p>
+                          {rider.zoneName ?? rider.zoneSlug ?? "Yaba"}
+                          {rider.zoneSlug ? (
+                            <span className="ml-1 text-[#8A8780]">({rider.zoneSlug})</span>
+                          ) : null}
+                        </p>
+                        <p className="mt-0.5 text-[12px] text-[#8A8780]">
+                          {rider.zoneAcceptanceRate != null
+                            ? `${formatPercent(rider.zoneAcceptanceRate)} of jobs taken`
+                            : "No zone jobs yet"}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap tabular-nums">
+                        {rider.completedCount ?? 0}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-[#8A8780]">
                         {formatDate(rider.createdAt)}

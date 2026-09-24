@@ -8,6 +8,10 @@ export function commissionNgn(feeNgn: number, payoutNgn: number): number {
   return Math.max(0, Math.round(feeNgn - payoutNgn));
 }
 
+export function formatPercent(value: number | null | undefined): string {
+  return value == null ? "—" : `${value}%`;
+}
+
 export function formatNaira(amount: number): string {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",

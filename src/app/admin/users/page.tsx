@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ActiveToggle } from "@/components/admin/ActiveToggle";
+import { KpiCard } from "@/components/admin/KpiCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { formatDate, formatDateTime, formatNaira } from "@/lib/format";
@@ -22,6 +23,11 @@ export default function AdminUsersPage() {
     );
   }, [customers, query]);
 
+  const active = customers.filter((user) => user.active).length;
+  const onHold = customers.filter((user) => user.cancelLimited).length;
+  const orders = customers.reduce((sum, user) => sum + user.ordersCount, 0);
+  const spent = customers.reduce((sum, user) => sum + user.spentNgn, 0);
+
   return (
     <div>
       <h1 className="font-display text-[22px] font-semibold tracking-[-0.03em] md:text-[26px]">
@@ -34,6 +40,28 @@ export default function AdminUsersPage() {
       {error ? (
         <p className="mt-3 text-[13px] font-medium text-danger">{error}</p>
       ) : null}
+
+      <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiCard
+          label="Users"
+          value={isPending ? "—" : String(customers.length)}
+          hint={`${active} active`}
+        />
+        <KpiCard
+          label="On hold"
+          value={isPending ? "—" : String(onHold)}
+          hint="Cancel limit reached"
+          tone={onHold > 0 ? "amber" : "default"}
+        />
+        <KpiCard
+          label="Orders"
+          value={isPending ? "—" : String(orders)}
+        />
+        <KpiCard
+          label="Spent"
+          value={isPending ? "—" : formatNaira(spent)}
+        />
+      </div>
 
       <input
         value={query}

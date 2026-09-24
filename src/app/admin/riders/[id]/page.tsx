@@ -9,7 +9,13 @@ import { OrdersTable } from "@/components/admin/OrdersTable";
 import { RiderVerificationForm } from "@/components/admin/RiderVerificationForm";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
-import { formatDate, formatDuration, formatKm, formatNaira } from "@/lib/format";
+import {
+  formatDate,
+  formatDuration,
+  formatKm,
+  formatNaira,
+  formatPercent,
+} from "@/lib/format";
 import {
   useAdminRider,
   useEditRiderMutation,
@@ -117,6 +123,16 @@ export default function AdminRiderDetailPage() {
               ? `${rider.droppedRecentCount ?? 0} this week${rider.lastDropReason ? ` · last: ${rider.lastDropReason}` : ""}`
               : undefined
           }
+        />
+        <Stat
+          label="Keep rate"
+          value={formatPercent(rider.acceptanceRate)}
+          hint="Jobs they kept vs handed back"
+        />
+        <Stat
+          label={`${rider.zoneName ?? "Zone"} take`}
+          value={formatPercent(rider.zoneAcceptanceRate)}
+          hint="Share of zone jobs that got a rider"
         />
       </div>
 

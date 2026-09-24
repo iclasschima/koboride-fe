@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { KpiCard } from "@/components/admin/KpiCard";
 import { OrdersTable } from "@/components/admin/OrdersTable";
 import { cn } from "@/lib/cn";
 import { useAdminTrips } from "@/lib/query/hooks";
@@ -19,6 +20,11 @@ export default function AdminOrdersPage() {
   const { data: trips = [], isPending } = useAdminTrips();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
   const [query, setQuery] = useState("");
+
+  const searching = trips.filter((trip) => trip.status === "dispatching").length;
+  const live = trips.filter((trip) => trip.status === "in_progress").length;
+  const completed = trips.filter((trip) => trip.status === "completed").length;
+  const cancelled = trips.filter((trip) => trip.status === "cancelled").length;
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -59,6 +65,28 @@ export default function AdminOrdersPage() {
         >
           Create order
         </Link>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiCard
+          label="Total"
+          value={isPending ? "—" : String(trips.length)}
+          hint={`${cancelled} cancelled`}
+        />
+        <KpiCard
+          label="Searching"
+          value={isPending ? "—" : String(searching)}
+          hint="Waiting for a rider"
+        />
+        <KpiCard
+          label="Live"
+          value={isPending ? "—" : String(live)}
+          hint="Rider assigned"
+        />
+        <KpiCard
+          label="Completed"
+          value={isPending ? "—" : String(completed)}
+        />
       </div>
 
       <div className="-mx-4 mt-5 flex items-center gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">

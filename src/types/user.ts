@@ -47,6 +47,10 @@ export type OpsUser = {
   docsComplete?: boolean;
   zoneSlug?: string;
   zoneName?: string;
+  completedCount?: number;
+  droppedCount?: number;
+  acceptanceRate?: number | null;
+  zoneAcceptanceRate?: number | null;
 };
 
 export type AdminRiderDetail = OpsUser & {
